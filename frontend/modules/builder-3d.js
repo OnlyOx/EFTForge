@@ -36,7 +36,9 @@ window.EFTForge = window.EFTForge || {};
     // The frame and its handshake.
     let _stage = null, _frame = null, _hud = null, _origin = null, _loading = null;
     let _drawing = false;         // a build is on its way to the viewer
-    let _holds = 0;               // our own loads covering the build area (holdLoading)
+    let _installKey = null;       // the compact picker slot a pick is installing into, until the next sync takes it
+    let _nativeLoadingKey = null; // the compact picker slot whose part list is being fetched
+    let _holds = 0;              // our own loads covering the build area (holdLoading)
     let _ready = false, _readyTimer = null;
     let _nextId = 1;
     const _pending = new Map();   // id -> {resolve, reject, timer}
@@ -184,6 +186,9 @@ window.EFTForge = window.EFTForge || {};
                 flashColor: "rgba(220, 50, 50, 0.45)",
                 // Part icons shimmer while they load, as ours do (eft-img-shimmer in styles.css).
                 iconLoading: "linear-gradient(90deg, #181818 25%, #242424 50%, #181818 75%)",
+                // A slot whose part list is loading spins the gun cards' throbber (.gun-card-loading).
+                slotLoading: "#f5c542",
+                slotLoadingTrack: "rgba(245, 197, 66, 0.25)",
                 // The viewer's diagnostics dock in our design language: the frosted glass of
                 // .b3d-panel, .b3d-chip buttons, .b3d-mini-title headings, gold and teal accents.
                 diagBg: "rgba(20, 20, 20, 0.82)",
@@ -334,11 +339,19 @@ window.EFTForge = window.EFTForge || {};
         const payload = _bpWalkTreeToSptItems(gun, tree, (id, node) => nodes.set(id, node));
         if (!payload) return; // slots not loaded yet; the next render syncs
         const key = gun.id + "|" + JSON.stringify(payload.items);
-        if (key === _syncedKey) { _flushFlashes(); return; }
+        const slotKey = _installKey;
+        _installKey = null;
+        if (key === _syncedKey) {
+            // Nothing to draw, so the viewer never ends the throbber itself.
+            if (slotKey) send("setSlotLoading", null);
+            _flushFlashes();
+            return;
+        }
         const gunChanged = _syncedGunId !== gun.id;
-        // A new gun covers the view at once; a part swap only if it takes a while.
+        // A new gun covers the view at once; a part swap only if it takes a while, and one
+        // from the compact picker shows on its slot box instead.
         _drawing = true;
-        _setLoading(true, { delayed: !gunChanged });
+        if (!slotKey || gunChanged) _setLoading(true, { delayed: !gunChanged });
         _syncedKey = key;
         _syncedGunId = gun.id;
         _nodeById = nodes;
@@ -374,6 +387,7 @@ window.EFTForge = window.EFTForge || {};
             _introOnBuild();
         } catch (err) {
             if (key === _syncedKey) { _drawing = false; _setLoading(false); }
+            if (slotKey) send("setSlotLoading", null);
             console.warn("[builder-3d] setBuild failed:", err.message);
         }
     }
@@ -482,6 +496,7 @@ window.EFTForge = window.EFTForge || {};
         if (_tableOpen()) document.getElementById("att-table-close-btn")?.click();
         if (_native) { _native = null; _clearHoverDeltas({ compare: false }); }
         _nativeSeq++;
+        _nativeLoadingKey = null;
         if (_ready) send("closePartMenu");
     }
 
@@ -494,6 +509,8 @@ window.EFTForge = window.EFTForge || {};
         }
         // A second click on the open slot closes its list, as the game does.
         if ((_tableKey === data.key && _tableOpen()) || _native?.key === data.key) { closePicker(); return; }
+        // Its list is still loading: the click already landed, so don't restart the load.
+        if (_nativeLoadingKey === data.key) return;
         if (_pickerStyle === "game") _openNative(data.key, hit.parentNode, hit.slot);
         else _openTable(data.key, hit.parentNode, hit.slot);
     }
@@ -521,8 +538,25 @@ window.EFTForge = window.EFTForge || {};
     async function _openNative(key, parentNode, slot) {
         if (_tableOpen()) document.getElementById("att-table-close-btn")?.click();
         const seq = ++_nativeSeq;
-        const loaded = await _loadSlotCandidates(parentNode, slot, { stale: () => seq !== _nativeSeq });
-        if (!loaded || seq !== _nativeSeq || !isActive()) return;
+        // A slot whose parts aren't cached needs a round trip: its box spins a throbber
+        // (the viewer's setSlotLoading) so the click doesn't read as dead.
+        const fetching = !EFTForge.state.allowedCache[slot.id];
+        if (fetching) {
+            _nativeLoadingKey = key;
+            if (_ready) send("setSlotLoading", key);
+        }
+        let loaded;
+        try {
+            loaded = await _loadSlotCandidates(parentNode, slot, { stale: () => seq !== _nativeSeq });
+        } finally {
+            if (_nativeLoadingKey === key) _nativeLoadingKey = null;
+        }
+        if (!loaded || seq !== _nativeSeq || !isActive()) {
+            // openPartMenu ends the throbber; a failed or dropped load (and no other slot
+            // loading since) has to end it itself.
+            if (fetching && _ready && !_nativeLoadingKey) send("setSlotLoading", null);
+            return;
+        }
         const installedId = parentNode.children[slot.id]?.item?.id;
         // The game lists every part but the one installed.
         const items = loaded.processedItems;
@@ -593,7 +627,14 @@ window.EFTForge = window.EFTForge || {};
         }
         const entry = menu.byTpl.get(tpl);
         if (!entry || entry.hasConflict || installed?.item?.id === tpl) return;
-        installAttachment(menu.parentNode, menu.slot.id, entry.item);
+        // The pick's slot box spins until the new build is drawn (the viewer ends it on its
+        // build event), in place of the veil over the whole view.
+        _installKey = key;
+        send("setSlotLoading", key);
+        Promise.resolve(installAttachment(menu.parentNode, menu.slot.id, entry.item)).catch(() => {
+            if (_installKey === key) _installKey = null;
+            send("setSlotLoading", null);
+        });
     }
 
     // Our table tells the viewer when it closes (its close button, a removal, a view
