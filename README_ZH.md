@@ -314,19 +314,21 @@ launch.bat
 
 ## 外部配置加载
 
-外部工具可通过 `?build=` URL 参数直接跳转到 EFTForge 并预加载装配方案：
+外部工具可通过 `?build=` URL 参数直接跳转到 EFTForge 并预加载配置方案：
 
 ```
-https://eftforge.com/?build=<lzstring编码的装配码>
+https://eftforge.com/?build=<配置码>
 ```
 
-装配码为经 LZ-String 压缩、URL 安全编码的 JSON 载荷：
+加载器支持三种配置码格式：基于字典的 `3.` 格式、包含完整 ID 的紧凑 `2.` 格式，以及旧版 LZ-String 格式。EFTForge 会为每套配置方案生成 `3.` 和 `2.` 中较短的一种。外部项目可以参照 [`frontend/modules/build-manager.js`](frontend/modules/build-manager.js) 中的编码器生成任一种紧凑格式。生成 `3.` 格式还需要 [`frontend/data/build-code-catalog-v1.js`](frontend/data/build-code-catalog-v1.js) 中的固定物品与槽位字典；格式和字典规则见 [`scripts/BUILD_CODES.md`](scripts/BUILD_CODES.md)。如果某个 ID 或槽位不在字典中，请使用 `2.` 格式。两种紧凑格式都不需要为每套配置方案在服务器上保存记录。
+
+如需最简单的集成方式，外部项目仍可使用 LZ-String 的 `compressToEncodedURIComponent(JSON.stringify(payload))` 生成旧版配置码。三种格式表示相同的载荷：
 
 ```json
-{ "v": 1, "g": "<gunId>", "p": [["slotId", "itemId"], ...], "a": "<ammoId>" }
+{ "v": 1, "g": "<gunId>", "p": [["slotId", "itemId"], ...], "a": "<ammoId>", "ua": "<ubglAmmoId>" }
 ```
 
-EFTForge 将在页面加载时自动导入装配方案并清除 URL 参数。物品 ID 须与 EFTForge 内部的 tarkov.dev 物品 ID 保持一致。
+`a` 和 `ua` 弹药字段均可省略。EFTForge 将在页面加载时自动导入配置方案并清除 URL 参数。物品 ID 须与 EFTForge 使用的 tarkov.dev 物品 ID 保持一致。
 
 ---
 

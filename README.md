@@ -317,16 +317,18 @@ The backend runs at `http://127.0.0.1:8000` by default. Interactive docs are ava
 External tools can deep-link directly into EFTForge with a pre-loaded build via the `?build=` URL parameter:
 
 ```
-https://eftforge.com/?build=<lzstring_encoded_code>
+https://eftforge.com/?build=<share_code>
 ```
 
-The build code is a LZ-String compressed, URL-safe encoded JSON payload:
+The loader accepts three share code formats: dictionary based `3.` codes, full-ID compact `2.` codes, and legacy LZ-String codes. EFTForge generates the shorter of `3.` and `2.` for each build. External projects can generate either compact format by following the encoder in [`frontend/modules/build-manager.js`](frontend/modules/build-manager.js). `3.` codes also require the frozen item and slot dictionary in [`frontend/data/build-code-catalog-v1.js`](frontend/data/build-code-catalog-v1.js); see [`scripts/BUILD_CODES.md`](scripts/BUILD_CODES.md) for the format and dictionary rules. Use `2.` when an ID or slot is absent from the dictionary. Neither compact format requires a per-build server record.
+
+For the simplest integration, external projects can still generate a legacy code with LZ-String's `compressToEncodedURIComponent(JSON.stringify(payload))`. All three formats represent the same payload:
 
 ```json
-{ "v": 1, "g": "<gunId>", "p": [["slotId", "itemId"], ...], "a": "<ammoId>" }
+{ "v": 1, "g": "<gunId>", "p": [["slotId", "itemId"], ...], "a": "<ammoId>", "ua": "<ubglAmmoId>" }
 ```
 
-EFTForge will auto-load the build on page load and strip the parameter from the URL. Item IDs must match EFTForge's internal tarkov.dev item IDs.
+The `a` and `ua` ammo fields are optional. EFTForge will auto-load the build on page load and strip the parameter from the URL. Item IDs must match EFTForge's tarkov.dev item IDs.
 
 ---
 
