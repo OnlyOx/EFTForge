@@ -72,7 +72,7 @@ def improve_price(
         for owner in owners[child]:
             children.setdefault(owner, set()).add(child)
     bits = {i: 1 << j for j, i in enumerate(selected)}
-    blocked = [0] * (n + 1)
+    blocked = [0] * cb.n
     for coeffs, _lower, upper in cb.rows:
         if upper != 1 or any(value != 1 for value in coeffs.values()):
             continue
@@ -194,10 +194,21 @@ def improve_price(
             candidate_set = {i for i in selected if not (bits.get(i, 0) & removed_mask)}
             candidate_set.update(item_ids[j] for j in (new[a], new[b]) if j < n)
             candidate = [i for i in item_ids if i in candidate_set]
-            assignment = np.zeros(n + 1)
+            assignment = np.zeros(cb.n)
             candidate_indices = [idx[i] for i in candidate]
             assignment[candidate_indices] = 1
             assignment[n] = min(100, base_ergo + float(ergo[candidate_indices].sum()))
+            from optimizer.milp import _order_pairs_parent_first
+
+            pairs = _order_pairs_parent_first(
+                candidate, item_to_valid_slots, weapon.id, candidate_set, cb.required_slots
+            )
+            if len(pairs) != len(candidate):
+                continue
+            for sid, iid in pairs:
+                column = cb.placements.get((sid, iid))
+                if column is not None:
+                    assignment[column] = 1
             checks += 1
             lhs = constraints.A @ assignment
             if assignment[n] < 0 or np.any(lhs < constraints.lb - 1e-7) or np.any(lhs > constraints.ub + 1e-7):

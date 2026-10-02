@@ -86,9 +86,13 @@ def run_cleanup(db, params=None, deadline=1, status="optimal"):
     assert source == before
     if result["status"] in ("optimal", "feasible"):
         selected = result["selected_items"]
-        x = np.zeros(len(ids) + 1)
+        x = np.zeros(cb.n)
         x[[idx[i] for i in selected]] = 1
-        x[-1] = min(100, weapon.base_ergonomics + sum(mods[i].ergonomics_modifier or 0 for i in selected))
+        x[len(ids)] = min(100, weapon.base_ergonomics + sum(mods[i].ergonomics_modifier or 0 for i in selected))
+        pairs = milp._order_pairs_parent_first(selected, slots, weapon.id, set(selected), cb.required_slots)
+        assert len(pairs) == len(selected)
+        for sid, iid in pairs:
+            x[cb.placements[sid, iid]] = 1
         constraint = cb.build()
         lhs = constraint.A @ x
         assert np.all(lhs >= constraint.lb - 1e-7)
@@ -273,3 +277,16 @@ def test_true_ergo_anchor_sweep_also_runs_price_cleanup(model, monkeypatch):
     assert len(calls) == 1
     assert result["total_price_rub"] == 130000
     assert {iid for _slot, iid in result["slot_pairs"]} == set(result["selected_items"])
+
+
+def test_price_cleanup_validates_ambiguous_placements_and_required_slots(model):
+    from models_slots import Slot
+    from models_slot_allowed import SlotAllowedItem
+
+    model.add(Slot(id="spare_stock", parent_item_id="gun", slot_name="spare_stock", required=False))
+    for iid in ("old_stock", "new_stock"):
+        model.add(SlotAllowedItem(slot_id="spare_stock", allowed_item_id=iid))
+    model.commit()
+    result, source = run_cleanup(model)
+    assert result["total_price_rub"] < source["total_price_rub"]
+    assert result["metrics"]["local_price_checks"] > 0

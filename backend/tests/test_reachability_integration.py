@@ -210,7 +210,7 @@ def test_projected_offers_preserve_access_filters_and_price_selection(
     }
 
 
-def test_pruning_preserves_legacy_multi_parent_slot_constraints(db):
+def test_absent_owner_does_not_make_independent_placements_compete(db):
     setup_graph(
         db,
         {
@@ -221,9 +221,9 @@ def test_pruning_preserves_legacy_multi_parent_slot_constraints(db):
     )
     result = optimize_weapon(db, "gun", OptimizeParams(exclude_items=["unavailable"]))
     assert result["status"] == "optimal"
-    # The existing item-level MILP imposes a mutex on the shared slot even
-    # when its owner is absent. PR2 must not silently change that formulation.
-    assert len(result["selected_items"]) == 1
+    # Install both items in their root slots without using the absent owner.
+    assert set(result["selected_items"]) == {"a", "b"}
+    assert dict(result["slot_pairs"]) == {"left": "a", "right": "b"}
 
 
 def test_fixed_weapon_conflicts_still_cover_slots_of_removed_owners(db):
@@ -349,3 +349,63 @@ def test_combo_snapshots_preserve_factory_stats_and_request_local_names(db):
             expected = _compute_stats(original_items["gun"], ids, original_items, strength, equipment)
             assert {key: build[key] for key in expected} == expected
             assert build["parent_item"]["name"] == ("父件" if lang == "zh" else "parent")
+
+
+@pytest.mark.parametrize("use_true_ergo", [False, True])
+@pytest.mark.parametrize("tradeoff", ["price", "recoil"])
+def test_explore_places_locked_scope_and_backup_sight_on_separate_mounts(db, use_true_ergo, tradeoff):
+    from optimizer.explore import explore_weapon
+
+    setup_graph(
+        db,
+        {
+            ("rail", "gun"): ["geis", "rmr"],
+            ("backup", "gun"): ["mpr45"],
+            ("scope", "geis"): ["vudu"],
+            ("offset", "mpr45"): ["rmr"],
+            ("reflex", "rmr"): ["sro"],
+        },
+        required=["scope", "reflex"],
+    )
+    locked = ["vudu", "geis", "mpr45", "rmr", "sro"]
+    result = explore_weapon(
+        db, "gun", OptimizeParams(include_items=locked, use_true_ergo=use_true_ergo), tradeoff, steps=10
+    )
+    assert result["status"] == "complete"
+    assert result["points"]
+    for point in result["points"]:
+        point = point["build"]
+        assert set(point["selected_items"]) == set(locked)
+        assert dict(point["slot_pairs"]) == {
+            "rail": "geis",
+            "backup": "mpr45",
+            "scope": "vudu",
+            "offset": "rmr",
+            "reflex": "sro",
+        }
+        installed = {"gun"}
+        for sid, iid in point["slot_pairs"]:
+            assert db.get(Slot, sid).parent_item_id in installed
+            installed.add(iid)
+
+
+@pytest.mark.parametrize("required", [[], ["left", "right"]])
+def test_shared_attachment_cannot_fill_two_slots_at_once(db, required):
+    setup_graph(db, {("left", "gun"): ["shared"], ("right", "gun"): ["shared"]}, required=required)
+    result = optimize_weapon(db, "gun", OptimizeParams(include_items=["shared"]))
+    assert result["status"] == ("infeasible" if required else "optimal")
+    if not required:
+        assert len(result["slot_pairs"]) == 1
+
+
+def test_locked_attachments_still_compete_for_one_actual_slot(db):
+    setup_graph(db, {("rail", "gun"): ["a", "b"], ("spare", "adapter"): ["a", "b"]})
+    result = optimize_weapon(db, "gun", OptimizeParams(include_items=["a", "b"], exclude_items=["adapter"]))
+    assert result["status"] == "infeasible"
+
+
+def test_multi_parent_assignment_fills_required_slot_before_optional_slot(db):
+    setup_graph(db, {("a_optional", "gun"): ["shared"], ("z_required", "gun"): ["shared"]}, required=["z_required"])
+    result = optimize_weapon(db, "gun", OptimizeParams(include_items=["shared"]))
+    assert result["status"] == "optimal"
+    assert result["slot_pairs"] == [["z_required", "shared"]]

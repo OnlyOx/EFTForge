@@ -405,9 +405,7 @@ def _load_candidates_and_prices(db, weapon_id: str, params: OptimizeParams):
         "pruning_passes": pruned.passes,
         "pruning_ms": round((time.perf_counter() - pruning_started) * 1000, 3),
     }
-    # Keep the original slot constraints while shrinking the item variables.
-    # Dropping slots owned by removed items would loosen the existing MILP's
-    # multi-parent mutex/conflict semantics (placement variables are out of scope).
+    # Keep slot records for placement and required-slot validation in the MILP.
     return weapon, compat_map, mods, (candidate_ids, prices)
 
 

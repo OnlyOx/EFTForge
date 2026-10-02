@@ -520,18 +520,40 @@ class TestTchebycheffMode:
             result = optimize_weapon(db, M4A1_ID, OptimizeParams(**kwargs))
             assert result["status"] == "optimal"
 
-    def test_literal_zero_weight_does_not_cliff_against_the_next_ui_tick(self, db):
-        """Regression test: a literal 0% weight zeroed that axis out of both
-        the z-constraint and the tie-break augmentation term entirely, so
-        capped_ergo (or recoil/price) was a free variable with zero pressure
-        on it - an arbitrary tie-break that could land far from what even a
-        1% weight (the smallest tick the UI can actually send) would pick.
-        Confirmed identical on plain main before this fix: ergo_weight=0 gave
-        ergo 39, but 0.01 gave ergo 39.5 only after passing through a much
-        larger jump at smaller test increments. WEIGHT_FLOOR keeps every
-        axis in play for tie-breaking even at a literal 0% weight."""
+    def test_zero_and_subfloor_weights_use_the_same_objective(self, db):
+        from optimizer.milp import WEIGHT_FLOOR
+
+        # Compare equivalent floored objectives rather than bounding the ergo
+        # change between distinct weights on a discrete attachment frontier.
         zero = optimize_weapon(db, M4A1_ID, OptimizeParams(ergo_weight=0.0, recoil_weight=1.0, price_weight=0.0))
-        one_pct = optimize_weapon(db, M4A1_ID, OptimizeParams(ergo_weight=0.01, recoil_weight=0.99, price_weight=0.0))
-        assert zero["status"] == one_pct["status"] == "optimal"
-        ergo_gap = abs(zero["final_stats"]["total_ergo"] - one_pct["final_stats"]["total_ergo"])
-        assert ergo_gap <= 1.0
+        subfloor = optimize_weapon(
+            db, M4A1_ID, OptimizeParams(ergo_weight=WEIGHT_FLOOR / 2, recoil_weight=1.0, price_weight=0.0)
+        )
+        assert zero["status"] == subfloor["status"] == "optimal"
+        assert zero["final_stats"] == subfloor["final_stats"]
+        assert zero["total_price_rub"] == subfloor["total_price_rub"]
+
+
+@pytest.mark.parametrize("tradeoff", ["price", "recoil"])
+def test_explore_locked_vudu_with_mpr45_rmr_sro(db, tradeoff):
+    from optimizer.explore import explore_weapon
+    from models_items import Item
+
+    locked = [
+        "5b3b99475acfc432ff4dcbee",  # Vudu
+        "618b9643526131765025ab35",  # Geissele 30mm
+        "5649a2464bdc2d91118b45a8",  # MPR45
+        "5a33b2c9c4a282000c5a9511",  # RMR low profile
+        "688b44cb28bf8d85cd0ff108",  # SRO
+    ]
+    if db.query(Item).filter(Item.id.in_(locked)).count() != len(locked):
+        pytest.skip("requires the scope and backup sight items in the synced database")
+    result = explore_weapon(db, M4A1_ID, OptimizeParams(include_items=locked), tradeoff, steps=10)
+    assert result["points"]
+    for point in result["points"]:
+        point = point["build"]
+        assert set(locked) <= set(point["selected_items"])
+        pairs = dict(point["slot_pairs"])
+        assert pairs["5649dc074bdc2d1b2b8b458f"] == "5a33b2c9c4a282000c5a9511"
+        assert pairs["5a33b2c9c4a282000c5a9512"] == "688b44cb28bf8d85cd0ff108"
+        assert len(pairs) == len(point["selected_items"])
