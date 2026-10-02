@@ -1387,6 +1387,7 @@ async function _publishSavedBuildById(id) {
 
 function showPublishConfirmPanel(buildName, entryId) {
     EFTForge.state.publishMode = true;
+    EFTForge.builder3d?.onPublishModeChange();
     document.getElementById("panel-resizer")?.classList.add("publish-mode");
 
     if (isMobileLayout()) {
@@ -1444,7 +1445,7 @@ function _cancelPublish() {
     document.body.classList.remove("mobile-publish-mode");
     closeMobileRightPanel();
     EFTForge.state.publishMode = false;
-    _restoreNormalPlaceholder();
+    _restoreNormalPlaceholder({ restoreView: false });
     returnToGunSelection();
 }
 
@@ -1456,7 +1457,7 @@ function _modifyPublish() {
     syncBuildDisplayName();
 }
 
-function _restoreNormalPlaceholder() {
+function _restoreNormalPlaceholder({ restoreView = true } = {}) {
     document.getElementById("panel-resizer")?.classList.remove("publish-mode");
     const gun         = EFTForge.state.currentGun;
     const placeholder = document.getElementById("attachment-placeholder");
@@ -1479,6 +1480,8 @@ function _restoreNormalPlaceholder() {
             </span>
         </div>
     `;
+    EFTForge.optimizer?.onPlaceholderRestore();
+    EFTForge.builder3d?.onPublishModeChange({ restoreView });
 }
 
 async function _confirmPublish(buildName, entryId) {

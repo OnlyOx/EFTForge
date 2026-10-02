@@ -420,6 +420,12 @@ window.EFTForge.optimizer = (function () {
         placeholder.appendChild(tab);
     }
 
+    function onPlaceholderRestore() {
+        // Restore the rail before a synchronous layout change tries to move it.
+        const placeholder = document.getElementById('attachment-placeholder');
+        if (placeholder && !isMobileLayout() && !EFTForge.state.publishMode) _ensureEdgeTab(placeholder);
+    }
+
     /* ===========================
        SHARED HELPERS
     =========================== */
@@ -4284,6 +4290,6 @@ window.EFTForge.optimizer = (function () {
     // Scripts are loaded at the end of <body> so DOM is ready; init immediately.
     init();
 
-    return { showPanel, hidePanel, onBuildLeave, onLangChange, onTraderLevelsChange };
+    return { showPanel, hidePanel, onBuildLeave, onLangChange, onTraderLevelsChange, onPlaceholderRestore };
 
 }());

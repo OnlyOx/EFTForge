@@ -881,7 +881,10 @@ window.EFTForge = window.EFTForge || {};
         }
         group.setAttribute("aria-label", _t("b3d.modeTip"));
         const shown = isActive() ? "3d" : "2d";
-        group.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.mode === shown));
+        group.querySelectorAll("button").forEach(b => {
+            b.classList.toggle("active", b.dataset.mode === shown);
+            b.disabled = b.dataset.mode === "3d" && EFTForge.state.publishMode;
+        });
     }
 
     // Stats dock: draggable, collapsible to its side tab, remembered (position as a
@@ -1016,14 +1019,14 @@ window.EFTForge = window.EFTForge || {};
             _topLeft.prepend(controls, toggle);
             _dockBody.append(stats, price);
             _moveAmmo(true);
-            _el("main-container").appendChild(edgeTab);
+            if (edgeTab) _el("main-container").appendChild(edgeTab);
         } else {
             _moveAmmo(false);
             area.insertBefore(controls, area.firstChild);
             area.insertBefore(toggle, controls.nextSibling);
             area.insertBefore(stats, slots);
             area.insertBefore(price, slots.nextSibling);
-            placeholder.appendChild(edgeTab);
+            if (edgeTab) placeholder.appendChild(edgeTab);
         }
     }
 
@@ -1471,6 +1474,7 @@ window.EFTForge = window.EFTForge || {};
     // --------------------------------------------------------- public
 
     function setMode(mode) {
+        if (EFTForge.state.publishMode) return;
         const next = mode === "2d" ? "2d" : "3d";
         _mode = next;
         _write(MODE_KEY, next);
@@ -1490,11 +1494,18 @@ window.EFTForge = window.EFTForge || {};
 
     // selectGun: the build area is up.
     function onGunOpen() {
-        if (_supported() && _mode === "3d" && !_failedThisSession) _enter3d();
+        if (!EFTForge.state.publishMode && _supported() && _mode === "3d" && !_failedThisSession) _enter3d();
         else _leave3d();
         _renderModeToggle();
         _renderChromeLabels();
         _scheduleSync();
+    }
+
+    function onPublishModeChange({ restoreView = true } = {}) {
+        // Keep the saved view preference while we show the 2D confirmation panel.
+        if (EFTForge.state.publishMode) _leave3d();
+        else if (restoreView && EFTForge.state.currentGun) onGunOpen();
+        _renderModeToggle();
     }
 
     // returnToGunSelection: close the view and free its WebGL context.
@@ -1577,7 +1588,7 @@ window.EFTForge = window.EFTForge || {};
 
     EFTForge.builder3d = {
         isActive, setMode, setPickerStyle, onGunOpen, onBuildLeave, onStats, onAimSettings, onTraderLevelsChange, prefetch, closePicker,
-        leaveSight,
+        leaveSight, onPublishModeChange,
         flashConflict, flashSlot, partName, holdLoading,
         call, send,
         get mode() { return _mode; },

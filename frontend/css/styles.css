@@ -10274,6 +10274,11 @@ body.builder-3d.b3d-sight #b3d-picker-toggle { display: none; }
   flex: 0 0 48px;
 }
 
+#b3d-mode-toggle .toggle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* The current build panel, floating: drag by its grip, collapse to its side tab. */
 #b3d-stats-dock { display: none; }
 

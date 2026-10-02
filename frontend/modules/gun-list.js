@@ -354,7 +354,7 @@ function returnToGunSelection() {
 
     if (EFTForge.state.publishMode) {
         EFTForge.state.publishMode = false;
-        _restoreNormalPlaceholder();
+        _restoreNormalPlaceholder({ restoreView: false });
     }
 
     EFTForge.state.currentGun = null;
