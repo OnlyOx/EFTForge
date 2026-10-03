@@ -14,6 +14,7 @@ from scipy.optimize import milp, LinearConstraint, Bounds, linear_sum_assignment
 from scipy.sparse import csc_array
 
 from optimizer.local_price import improve_price
+from optimizer.matching_placement import MatchingPlacementModel
 
 from stats import (
     MOA_K,
@@ -70,16 +71,9 @@ _NO_CONSTRAINTS_PARAMS = SimpleNamespace(
     require_suppressor=False,
 )
 
-# Shared wall-clock budget for one build_and_solve call. A normal solve finishes in well under a
-# second; this only ever matters for a pathological case (an earlier attempt
-# at multi-slot placement variables produced a MILP that ran for 30+ minutes
-# without finishing). Every HiGHS invocation receives only the time remaining
-# in this budget, including overswing-cut retries and the TrueErgo anchor sweep.
-# Without a shared cap, those nested solves could hold a backend worker for
-# many minutes instead of degrading gracefully. Kept well above the
-# typical solve time so a legitimately hard-but-feasible constraint combo
-# normally has time to finish; see main.py's per-IP/global solve concurrency
-# guard for the surrounding request-level protection.
+# Share one wall-clock budget across placement refinement, overswing cuts,
+# and the TrueErgo anchor sweep. Pass only the remaining time to HiGHS so
+# nested retries cannot hold a backend worker indefinitely.
 SOLVE_TIME_LIMIT_SECONDS = 30
 
 # Objective exchange rates, mirroring the reference optimizer's lpBuilder.ts so
@@ -173,10 +167,10 @@ class ConstraintBuilder:
     def __init__(self, n):
         self.n = n
         self.rows = []
-        self.placements = {}
-        self.required_slots = set()
+        self.placement = None
         self._compiled = None
         self._compiled_row_count = 0
+        self._compiled_column_count = 0
 
     def le(self, coeffs: dict, rhs):
         self.rows.append((coeffs, -np.inf, rhs))
@@ -190,7 +184,7 @@ class ConstraintBuilder:
     def build(self):
         if not self.rows:
             return None
-        if self._compiled_row_count == len(self.rows):
+        if self._compiled_row_count == len(self.rows) and self._compiled_column_count == self.n:
             return self._compiled
         row_indices, col_indices, values = [], [], []
         lb = np.empty(len(self.rows))
@@ -205,11 +199,16 @@ class ConstraintBuilder:
             ub[row_i] = u
         A = csc_array((values, (row_indices, col_indices)), shape=(len(self.rows), self.n), dtype=float)
         self._compiled = LinearConstraint(A, lb, ub)
+        self._compiled_column_count = self.n
         self._compiled_row_count = len(self.rows)
         return self._compiled
 
 
-def _order_pairs_parent_first(selected_ids, item_to_valid_slots, weapon_id, selected_set, required_slots=()):
+def _order_pairs_parent_first(
+    selected_ids, item_to_valid_slots, weapon_id, selected_set, required_slots=(), *, placement=None
+):
+    if placement is not None:
+        return placement.match(selected_ids)
     # Match each selected item to one distinct slot before ordering its parents.
     # Prefer required slots so a shared attachment cannot leave one empty.
     if not selected_ids:
@@ -367,7 +366,17 @@ def _add_max_moa_constraint(cb, idx, mods, weapon, item_ids, max_moa, ammo=None)
         cb.ge(coeffs, moa_k * weapon.center_of_impact - max_moa)
 
 
-def _build_constraints(weapon, mods: dict, compat_map, candidate_ids: list, prices: dict, params, solve_stats=None):
+def _build_constraints(
+    weapon,
+    mods: dict,
+    compat_map,
+    candidate_ids: list,
+    prices: dict,
+    params,
+    solve_stats=None,
+    *,
+    placement_cut_cache=None,
+):
     """Builds every item_id/idx/constraint/item_to_valid_slots the solve needs,
     independent of the objective - so the TrueErgo sweep can re-solve the same
     model with different objectives without rebuilding constraints each time.
@@ -378,7 +387,6 @@ def _build_constraints(weapon, mods: dict, compat_map, candidate_ids: list, pric
     item_ids = list(candidate_ids)
     idx = {item_id: i for i, item_id in enumerate(item_ids)}
     n = len(item_ids)
-    weapon_id = weapon.id
 
     if n == 0:
         raise _Infeasible(
@@ -394,100 +402,16 @@ def _build_constraints(weapon, mods: dict, compat_map, candidate_ids: list, pric
     ergo_idx = n
     cb = ConstraintBuilder(n + 1)
 
-    # Track placement only for ambiguous items; single-slot items can reuse x_i.
-    # Keep these columns continuous: once selections are binary, the remaining
-    # slot assignment is a bipartite matching polytope with integral vertices.
-    placements = {}
-    for item_id in item_ids:
-        slots = [
-            (sid, owner) for sid, owner in item_to_valid_slots.get(item_id, []) if owner == weapon_id or owner in idx
-        ]
-        item_to_valid_slots[item_id] = slots
-        if len(slots) > 1:
-            columns = []
-            for slot_id, owner in slots:
-                column = cb.n
-                cb.n += 1
-                placements[slot_id, item_id] = column
-                columns.append(column)
-            cb.eq({idx[item_id]: -1, **{column: 1 for column in columns}}, 0)
-        elif slots:
-            placements[slots[0][0], item_id] = idx[item_id]
-        else:
-            cb.eq({idx[item_id]: 1}, 0)
-
-    cb.placements = placements
-    for slot_id, items in compat_map.slot_items.items():
-        columns = [placements[slot_id, i] for i in items if (slot_id, i) in placements]
-        if not columns:
-            continue
-        owner = compat_map.slot_owner[slot_id]
-        coeffs = {column: 1 for column in columns}
-        if owner == weapon_id:
-            cb.le(coeffs, 1)
-        else:
-            coeffs[idx[owner]] = coeffs.get(idx[owner], 0) - 1
-            cb.le(coeffs, 0)
-
-    # 3. Conflicts - item<->item and item<->slot, both directions.
-    conflict_pairs = set()
-
-    def _add_conflicts_for(item_id, item_row):
-        if item_row.conflicting_item_ids:
-            for other_id in item_row.conflicting_item_ids.split(","):
-                if other_id in idx:
-                    conflict_pairs.add(tuple(sorted((item_id, other_id))))
-        if item_row.conflicting_slot_ids:
-            for slot_id in item_row.conflicting_slot_ids.split(","):
-                for other_id in compat_map.slot_items.get(slot_id, []):
-                    if other_id in idx and other_id != item_id:
-                        conflict_pairs.add(tuple(sorted((item_id, other_id))))
-
-    for item_id in item_ids:
-        _add_conflicts_for(item_id, mods[item_id])
-    # The weapon itself may also declare conflicts (e.g. a receiver that
-    # blocks a specific handguard) - those forbid the mod outright.
-    forced_zero = set()
-    if weapon.conflicting_item_ids:
-        for other_id in weapon.conflicting_item_ids.split(","):
-            if other_id in idx:
-                forced_zero.add(other_id)
-    if weapon.conflicting_slot_ids:
-        for slot_id in weapon.conflicting_slot_ids.split(","):
-            for other_id in compat_map.slot_items.get(slot_id, []):
-                if other_id in idx:
-                    forced_zero.add(other_id)
-    for item_id in forced_zero:
-        cb.eq({idx[item_id]: 1}, 0)
-
-    for a, b in conflict_pairs:
-        cb.le({idx[a]: 1, idx[b]: 1}, 1)
-
-    # 4. Required slots.
-    for slot_id, items in compat_map.slot_items.items():
-        slot = compat_map.slots_by_id.get(slot_id)
-        if not slot or not slot.required:
-            continue
-        cb.required_slots.add(slot_id)
-        in_play = [placements[slot_id, i] for i in items if (slot_id, i) in placements]
-        if not in_play:
-            owner = compat_map.slot_owner[slot_id]
-            if owner == weapon_id:
-                raise _Infeasible(
-                    f"Required slot {slot.slot_name} has no available attachment under the current filters.",
-                    key="optimizer.reason.requiredSlotUnavailable",
-                    params={"slotName": slot.slot_name},
-                )
-            if owner in idx:
-                cb.eq({idx[owner]: 1}, 0)
-            continue
-        owner = compat_map.slot_owner[slot_id]
-        coeffs = {column: -1 for column in in_play}
-        if owner == weapon_id:
-            cb.le(coeffs, -1)  # sum(x_i) >= 1
-        elif owner in idx:
-            coeffs[idx[owner]] = coeffs.get(idx[owner], 0) + 1
-            cb.le(coeffs, 0)  # sum(x_i) >= x_owner
+    placement = MatchingPlacementModel(weapon, mods, compat_map, item_ids, idx, placement_cut_cache)
+    for slot_id, (owner, required, allowed) in placement.slots.items():
+        if owner == weapon.id and required and not allowed:
+            slot = compat_map.slots_by_id[slot_id]
+            raise _Infeasible(
+                f"Required slot {slot.slot_name} has no available attachment under the current filters.",
+                key="optimizer.reason.requiredSlotUnavailable",
+                params={"slotName": slot.slot_name},
+            )
+    placement.add_constraints(cb)
 
     # 5. Hard-stat / budget constraints. Recoil and weight are affine in x
     # given a fixed receiver base, since EFTForge's own stat formula is
@@ -752,25 +676,69 @@ def _deadline_timeout(matrix_ms=0.0):
     )
 
 
+MAX_PLACEMENT_CUT_ITERS = 64
+
+
 def _solve_once(c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, deadline=None, extra_bounds=(100.0,)):
+    """Refine the selection model until its incumbent has a physical placement."""
+    separator = getattr(getattr(cb, "placement", None), "add_matching_cut", None)
+    if separator is None:
+        return _solve_relaxation_once(
+            c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, deadline, extra_bounds
+        )
+    shared_deadline = deadline if deadline is not None else time.perf_counter() + SOLVE_TIME_LIMIT_SECONDS
+    attempts = []
+    refinements = 0
+    for _ in range(MAX_PLACEMENT_CUT_ITERS):
+        result = _solve_relaxation_once(
+            c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, shared_deadline, extra_bounds
+        )
+        rejected = result.pop("_unplaced_selection", None)
+        if rejected is None:
+            attempts.append(result)
+            result["metrics"] = _aggregate_attempt_metrics(attempts)
+            result["metrics"]["placement_refinement_count"] = refinements
+            return result
+        # Count the native solve even when we reject its placement afterward.
+        native_status = "optimal" if result["termination"]["solver_status_code"] == 0 else "feasible"
+        attempts.append({**result, "status": native_status})
+        if not separator(cb, rejected):
+            result["metrics"] = _aggregate_attempt_metrics(attempts)
+            result["metrics"]["placement_refinement_count"] = refinements
+            return result
+        refinements += 1
+    metrics = _aggregate_attempt_metrics(attempts)
+    metrics["placement_refinement_count"] = refinements
+    return _empty_result(
+        "timeout",
+        "The placement refinement limit was reached before finding a feasible build.",
+        {"solver_status_code": 1, "solver_message": "Placement refinement limit reached."},
+        metrics,
+    )
+
+
+def _solve_relaxation_once(
+    c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, deadline=None, extra_bounds=(100.0,)
+):
     """extra_bounds is the upper bound for each trailing continuous column
     past the n binary x_i's - normally just capped_ergo (index n, bounded
     [0, 100]). Tchebycheff solves (see _solve_tchebycheff_once) pass a second
     entry for the unbounded-above min-max auxiliary z, reusing this same
     solve/status-handling logic instead of duplicating it for one extra
     column."""
+    # Keep the legacy helper contract when a caller supplies only item columns.
+    cb.n = max(cb.n, n + len(extra_bounds))
     matrix_start = time.perf_counter()
     constraints = cb.build()
     matrix_ms = (time.perf_counter() - matrix_start) * 1000
-    # Pad objectives with zero-cost placement columns and keep them continuous.
-    dimension = max(cb.n, n + len(extra_bounds))
-    c = np.pad(c, (0, dimension - len(c)))
-    upper = np.ones(dimension)
+    extra_n = cb.n - n
+    upper = np.ones(cb.n)
     upper[n] = extra_bounds[0]
     if len(extra_bounds) > 1:
         upper[-1] = extra_bounds[1]
-    bounds = Bounds(np.zeros(dimension), upper)
-    integrality = np.concatenate([np.ones(n), np.zeros(dimension - n)])
+    c = np.pad(c, (0, cb.n - len(c)))
+    bounds = Bounds(np.zeros(cb.n), upper)
+    integrality = np.concatenate([np.ones(n), np.zeros(extra_n)])
 
     time_limit = SOLVE_TIME_LIMIT_SECONDS
     if deadline is not None:
@@ -793,9 +761,13 @@ def _solve_once(c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, dead
     # scipy.optimize.milp status codes: 0=optimal, 1=iteration/time limit,
     # 2=infeasible, 3=unbounded, 4=other solver failure. A limit result may
     # still carry a valid incumbent; preserve it, but never label it optimal.
-    extra_ok = res.x is not None and len(res.x) == dimension
+    extra_ok = res.x is not None and len(res.x) == n + extra_n
     if extra_ok:
-        extra_ok = np.all(res.x[n:] >= -1e-6) and np.all(res.x[n:] <= upper[n:] + 1e-6)
+        for j, ub in enumerate(upper[n:]):
+            val = res.x[n + j]
+            if not (-1e-6 <= val <= (ub + 1e-6 if np.isfinite(ub) else np.inf)):
+                extra_ok = False
+                break
     has_incumbent = (
         extra_ok
         and np.all(np.isfinite(res.x))
@@ -814,17 +786,14 @@ def _solve_once(c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, dead
 
     selected_ids = [item_ids[i] for i in range(n) if res.x[i] > 0.5]
     selected_set = set(selected_ids)
-    # Extract an integral matching from the LP's supported placements.
-    item_indices = {iid: i for i, iid in enumerate(item_ids)}
-    supported = {
-        iid: [
-            (sid, owner)
-            for sid, owner in item_to_valid_slots.get(iid, ())
-            if res.x[cb.placements.get((sid, iid), item_indices[iid])] > 1e-7
-        ]
-        for iid in selected_ids
-    }
-    slot_pairs = _order_pairs_parent_first(selected_ids, supported, weapon_id, selected_set, cb.required_slots)
+    slot_pairs = _order_pairs_parent_first(
+        selected_ids, item_to_valid_slots, weapon_id, selected_set, placement=getattr(cb, "placement", None)
+    )
+    if slot_pairs is None:
+        result = _empty_result("error", "Selected items have no legal slot assignment.", metadata, metrics)
+        if getattr(getattr(cb, "placement", None), "add_matching_cut", None) is not None:
+            result["_unplaced_selection"] = selected_ids
+        return result
 
     return {
         "status": "optimal" if res.status == 0 else "feasible",
@@ -858,12 +827,17 @@ def _aggregate_attempt_metrics(attempts):
             status = attempt["status"]
             status_counts[status] = status_counts.get(status, 0) + 1
             solve_count += 1
-    return {
+    result = {
         "matrix_build_ms": round(matrix_build_ms, 3),
         "solver_ms": round(solver_ms, 3),
         "solve_count": solve_count,
         "solve_status_counts": status_counts,
     }
+    if any("placement_refinement_count" in attempt.get("metrics", {}) for attempt in attempts):
+        result["placement_refinement_count"] = sum(
+            attempt.get("metrics", {}).get("placement_refinement_count", 0) for attempt in attempts
+        )
+    return result
 
 
 # Each iteration below only ever fires because a real solve just proved a
@@ -990,6 +964,7 @@ def _solve_with_min_true_ergo(
     overswing case, just shifted.
     """
     attempts = []
+    rejected = set()
     for _ in range(MAX_OVERSWING_CUT_ITERS):
         result = _solve_once(
             c, cb, n, item_ids, weapon.id, item_to_valid_slots, prices, deadline=deadline, extra_bounds=extra_bounds
@@ -1003,7 +978,7 @@ def _solve_with_min_true_ergo(
             if solve_stats
             else _compute_stats(weapon, result["selected_items"], mods, strength_level, equip_ergo_modifier)
         )
-        if stats["true_ergo_delta"] >= min_true_ergo_delta:
+        if stats["true_ergo_delta"] >= min_true_ergo_delta - 1e-7:
             incomplete = any(attempt["status"] != "optimal" for attempt in attempts)
             if incomplete:
                 result = {**result}
@@ -1018,8 +993,14 @@ def _solve_with_min_true_ergo(
                 }
             result["metrics"] = _aggregate_attempt_metrics(attempts)
             return result
-        selected_ergo = base_ergo + sum((mods[i].ergonomics_modifier or 0) for i in result["selected_items"])
-        if min_true_ergo_delta > 0 and effective_ergo(selected_ergo, equip_ergo_modifier) < min_true_ergo_delta:
+        selected = frozenset(result["selected_items"])
+        if selected in rejected:
+            # Exclude only a selection whose exported stats already failed this floor.
+            cb.ge({idx[i]: -1 if i in selected else 1 for i in item_ids}, 1 - len(selected))
+            continue
+        rejected.add(selected)
+        selected_ergo = base_ergo + sum((mods[i].ergonomics_modifier or 0) for i in selected)
+        if min_true_ergo_delta > 0 and effective_ergo(selected_ergo, equip_ergo_modifier) < min_true_ergo_delta - 1e-7:
             # TED can't exceed the build's own ergo (a light build needs none, so its TED
             # is its ergo), so no weight cut reaches a floor above it: floor the ergo.
             cb.ge(
@@ -1176,8 +1157,7 @@ def _compute_ideal_and_nadir(
             # own docstring, and the SVDS+suppressor regression test).
             axis_cb = ConstraintBuilder(cb.n)
             axis_cb.rows = list(cb.rows)
-            axis_cb.placements = cb.placements
-            axis_cb.required_slots = cb.required_slots
+            axis_cb.placement = cb.placement
             candidate = _solve_avoiding_overswing(
                 c,
                 axis_cb,
@@ -1246,9 +1226,8 @@ def _tchebycheff_model(cb, n, item_ids, idx, mods, prices, ideal, nadir, params)
     price_range = max(nadir["price"] - ideal["price"], 1.0)
 
     cb2 = ConstraintBuilder(cb.n + 1)
-    cb2.placements = cb.placements
-    cb2.required_slots = cb.required_slots
     cb2.rows.extend(cb.rows)
+    cb2.placement = cb.placement
 
     # z >= ergo_w * (ideal_ergo - capped_ergo) / ergo_range
     cb2.ge({z_idx: 1, ergo_idx: ergo_w / ergo_range}, ergo_w * ideal["ergo"] / ergo_range)
@@ -1362,6 +1341,7 @@ def build_and_solve(
     objective_axis=None,
     local_price_cleanup=False,
     local_price_cache=None,
+    placement_cut_cache=None,
 ):
     model_start = time.perf_counter()
     deadline = (
@@ -1372,7 +1352,14 @@ def build_and_solve(
     solve_stats = _SolveStats(weapon, mods, params, ammo, ubgl_grenade)
     try:
         item_ids, idx, cb, item_to_valid_slots, base_ergo, base_weight, base_recoil_v, _ergo_idx = _build_constraints(
-            weapon, mods, compat_map, candidate_ids, prices, params, solve_stats
+            weapon,
+            mods,
+            compat_map,
+            candidate_ids,
+            prices,
+            params,
+            solve_stats,
+            placement_cut_cache=placement_cut_cache,
         )
     except _Infeasible as exc:
         return {
@@ -1388,7 +1375,10 @@ def build_and_solve(
     n = len(item_ids)
     model_metrics = {
         "variable_count": n,
-        "placement_variable_count": cb.n - n - 1,
+        "placement_variable_count": cb.placement.variable_count if cb.placement is not None else 0,
+        "total_variable_count": cb.n,
+        "slot_group_count": len(cb.placement.groups) if cb.placement is not None else 0,
+        "placement_shared_cut_count": getattr(cb.placement, "shared_cut_count", 0),
         "constraint_count": len(cb.rows),
         "coefficient_count": sum(len(coeffs) for coeffs, _, _ in cb.rows),
         "model_build_ms": round((time.perf_counter() - model_start) * 1000, 3),
@@ -1469,7 +1459,7 @@ def build_and_solve(
                         item_to_valid_slots,
                         weapon.id,
                         set(result["selected_items"]),
-                        cb.required_slots,
+                        placement=cb.placement,
                     )
         elif params.prevent_overswing:
             result = _solve_avoiding_overswing(
@@ -1512,7 +1502,7 @@ def build_and_solve(
                         item_to_valid_slots,
                         weapon.id,
                         set(result["selected_items"]),
-                        cb.required_slots,
+                        placement=cb.placement,
                     )
         solve_metrics = (
             result["metrics"] if "solve_count" in result["metrics"] else _aggregate_attempt_metrics([result])
@@ -1645,7 +1635,11 @@ def build_and_solve(
         )
         if best["status"] in ("optimal", "feasible"):
             best["slot_pairs"] = _order_pairs_parent_first(
-                best["selected_items"], item_to_valid_slots, weapon.id, set(best["selected_items"]), cb.required_slots
+                best["selected_items"],
+                item_to_valid_slots,
+                weapon.id,
+                set(best["selected_items"]),
+                placement=cb.placement,
             )
     best["metrics"] = {
         **model_metrics,
@@ -1662,7 +1656,7 @@ def _moa_stat_range(cb, idx, mods, item_ids, weapon):
     coi_items = [i for i in item_ids if mods[i].center_of_impact is not None]
     acc_items = [i for i in item_ids if mods[i].center_of_impact is None]
 
-    # Pad for capped ergo and placement columns even though MOA uses neither.
+    # Pad every auxiliary column; accuracy only depends on selected items.
     acc_coeffs = np.zeros(cb.n)
     for i in acc_items:
         acc_coeffs[idx[i]] = mods[i].accuracy_modifier or 0

@@ -1,0 +1,281 @@
+{
+  "source": "Frozen 2026-09-30 game snapshot; only the six reference attachments are retained. Tests supply equal synthetic prices.",
+  "source_sha256": "2cdd4ebe5adc88c66d4f3b98aa5e8cb08598ed4ca020f4e834a1f08473b51dff",
+  "weapon_id": "5a7ae0c351dfba0017554310",
+  "reference_parts": [
+    "5a6b5ed88dc32e000c52ec86",
+    "5a71e4f48dc32e001207fb26",
+    "5a7ad2e851dfba0016153692",
+    "5a7b4960e899ef197b331a2d",
+    "5a7ad74e51dfba0015068f45",
+    "6272379924e29f06af4d5ecb"
+  ],
+  "suppressor_id": "5a7ad74e51dfba0015068f45",
+  "light_id": "6272379924e29f06af4d5ecb",
+  "root_tactical_slot": "5a7ae0c351dfba0017554316",
+  "suppressor_tactical_slot": "5a7af207e899ef01931918b8",
+  "expected_stats": {
+    "total_ergo": 96.5,
+    "total_weight": 1.31,
+    "recoil_vertical": 234,
+    "recoil_horizontal": 195
+  },
+  "items": [
+    {
+      "id": "5a6b5ed88dc32e000c52ec86",
+      "name": "Glock 9x19 SAI 114mm threaded barrel",
+      "short_name": "G SAI",
+      "is_weapon": 0,
+      "weight": 0.18,
+      "base_ergonomics": 0.0,
+      "ergonomics_modifier": 0.0,
+      "recoil_modifier": -0.028999999999999998,
+      "recoil_vertical": null,
+      "recoil_horizontal": null,
+      "magazine_capacity": null,
+      "category_ids": "555ef6e44bdc2de9068b457e,55802f4a4bdc2ddb688b4569,5448fe124bdc2da5018b4567,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": null,
+      "conflicting_slot_ids": null,
+      "center_of_impact": 0.27,
+      "accuracy_modifier": 0.0,
+      "sighting_range": null
+    },
+    {
+      "id": "5a71e4f48dc32e001207fb26",
+      "name": "Glock ZEV Tech HEX Spartan RMR pistol slide",
+      "short_name": "G ZT Spartan",
+      "is_weapon": 0,
+      "weight": 0.19,
+      "base_ergonomics": 0.0,
+      "ergonomics_modifier": 10.0,
+      "recoil_modifier": -0.07,
+      "recoil_vertical": null,
+      "recoil_horizontal": null,
+      "magazine_capacity": null,
+      "category_ids": "55818a304bdc2db5418b457d,55802f4a4bdc2ddb688b4569,5448fe124bdc2da5018b4567,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": null,
+      "conflicting_slot_ids": null,
+      "center_of_impact": null,
+      "accuracy_modifier": 0.0,
+      "sighting_range": null
+    },
+    {
+      "id": "5a7ad2e851dfba0016153692",
+      "name": "Glock 9x19 \"Big Stick\" 33-round magazine",
+      "short_name": "Big Stick",
+      "is_weapon": 0,
+      "weight": 0.15,
+      "base_ergonomics": 0.0,
+      "ergonomics_modifier": -3.5,
+      "recoil_modifier": 0.0,
+      "recoil_vertical": null,
+      "recoil_horizontal": null,
+      "magazine_capacity": 33,
+      "category_ids": "5448bc234bdc2d3c308b4569,55802f3e4bdc2de7118b4584,5448fe124bdc2da5018b4567,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": null,
+      "conflicting_slot_ids": null,
+      "center_of_impact": null,
+      "accuracy_modifier": 0.0,
+      "sighting_range": null
+    },
+    {
+      "id": "5a7ad74e51dfba0015068f45",
+      "name": "Glock 9x19 Fischer Development FD917 sound suppressor",
+      "short_name": "G FD917",
+      "is_weapon": 0,
+      "weight": 0.35,
+      "base_ergonomics": 0.0,
+      "ergonomics_modifier": -2.0,
+      "recoil_modifier": -0.15,
+      "recoil_vertical": null,
+      "recoil_horizontal": null,
+      "magazine_capacity": null,
+      "category_ids": "550aa4cd4bdc2dd8348b456c,5448fe394bdc2d0d028b456c,550aa4154bdc2dd8348b456b,5448fe124bdc2da5018b4567,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": "5a7ad0c451dfba0013379712,5a7037338dc32e000d46d257,5a70366c8dc32e001207fb06,5a705e128dc32e000d46d258,5a7ad1fb51dfba0013379715,5a6b585a8dc32e5a9c28b4f1,5a6b592c8dc32e00094b97bf,5a6b59a08dc32e000b452fb7,5c7e8fab2e22165df16b889b,5a33a8ebc4a282000c5a950d,5c6165902e22160010261b28,5a32a064c4a28200741e22de",
+      "conflicting_slot_ids": null,
+      "center_of_impact": null,
+      "accuracy_modifier": 0.0,
+      "sighting_range": null
+    },
+    {
+      "id": "5a7ae0c351dfba0017554310",
+      "name": "Glock 17 9x19 pistol",
+      "short_name": "Glock 17",
+      "is_weapon": 1,
+      "weight": 0.231,
+      "base_ergonomics": 90.0,
+      "ergonomics_modifier": 90.0,
+      "recoil_modifier": 0.0,
+      "recoil_vertical": 311,
+      "recoil_horizontal": 260,
+      "magazine_capacity": null,
+      "category_ids": "5447b5cf4bdc2d65278b4567,5422acb9af1c889c16000029,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": null,
+      "conflicting_slot_ids": null,
+      "center_of_impact": 0.0,
+      "accuracy_modifier": null,
+      "sighting_range": 100
+    },
+    {
+      "id": "5a7b4960e899ef197b331a2d",
+      "name": "Glock Pachmayr Tactical Grip Glove",
+      "short_name": "G TGG",
+      "is_weapon": 0,
+      "weight": 0.08,
+      "base_ergonomics": 0.0,
+      "ergonomics_modifier": 3.0,
+      "recoil_modifier": 0.0,
+      "recoil_vertical": null,
+      "recoil_horizontal": null,
+      "magazine_capacity": null,
+      "category_ids": "55818a684bdc2ddd698b456d,55802f4a4bdc2ddb688b4569,5448fe124bdc2da5018b4567,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": null,
+      "conflicting_slot_ids": null,
+      "center_of_impact": null,
+      "accuracy_modifier": 0.0,
+      "sighting_range": null
+    },
+    {
+      "id": "6272379924e29f06af4d5ecb",
+      "name": "Olight Baldr Pro tactical flashlight with laser (Tan)",
+      "short_name": "BaldrPro",
+      "is_weapon": 0,
+      "weight": 0.129,
+      "base_ergonomics": 0.0,
+      "ergonomics_modifier": -1.0,
+      "recoil_modifier": 0.0,
+      "recoil_vertical": null,
+      "recoil_horizontal": null,
+      "magazine_capacity": null,
+      "category_ids": "55818b164bdc2ddc698b456c,550aa4154bdc2dd8348b456b,5448fe124bdc2da5018b4567,566162e44bdc2d3f298b4573,54009119af1c881c07000029",
+      "conflicting_item_ids": null,
+      "conflicting_slot_ids": null,
+      "center_of_impact": null,
+      "accuracy_modifier": 0.0,
+      "sighting_range": null
+    }
+  ],
+  "slots": [
+    {
+      "id": "5a6b5ed88dc32e000c52ec87",
+      "parent_item_id": "5a6b5ed88dc32e000c52ec86",
+      "slot_name": "Muzzle",
+      "slot_game_name": "mod_muzzle",
+      "required": 0
+    },
+    {
+      "id": "5a71e4f48dc32e001207fb27",
+      "parent_item_id": "5a71e4f48dc32e001207fb26",
+      "slot_name": "Rear Sight",
+      "slot_game_name": "mod_sight_rear",
+      "required": 0
+    },
+    {
+      "id": "5a71e4f48dc32e001207fb28",
+      "parent_item_id": "5a71e4f48dc32e001207fb26",
+      "slot_name": "Front Sight",
+      "slot_game_name": "mod_sight_front",
+      "required": 0
+    },
+    {
+      "id": "5a71e4f48dc32e001207fb29",
+      "parent_item_id": "5a71e4f48dc32e001207fb26",
+      "slot_name": "Scope",
+      "slot_game_name": "mod_scope",
+      "required": 0
+    },
+    {
+      "id": "5a7ae0c351dfba0017554312",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Barrel",
+      "slot_game_name": "mod_barrel",
+      "required": 1
+    },
+    {
+      "id": "5a7ae0c351dfba0017554313",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Pistol Grip",
+      "slot_game_name": "mod_pistol_grip",
+      "required": 0
+    },
+    {
+      "id": "5a7ae0c351dfba0017554314",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Receiver",
+      "slot_game_name": "mod_reciever",
+      "required": 1
+    },
+    {
+      "id": "5a7ae0c351dfba0017554315",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Magazine",
+      "slot_game_name": "mod_magazine",
+      "required": 0
+    },
+    {
+      "id": "5a7ae0c351dfba0017554316",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Tactical",
+      "slot_game_name": "mod_tactical",
+      "required": 0
+    },
+    {
+      "id": "5a7ae46be899ef00135e19f3",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Mount",
+      "slot_game_name": "mod_mount",
+      "required": 0
+    },
+    {
+      "id": "5a7af207e899ef01931918b8",
+      "parent_item_id": "5a7ad74e51dfba0015068f45",
+      "slot_name": "Tactical",
+      "slot_game_name": "mod_tactical",
+      "required": 0
+    },
+    {
+      "id": "5a7b4d2ce899ef0016170fbd",
+      "parent_item_id": "5a71e4f48dc32e001207fb26",
+      "slot_name": "Muzzle",
+      "slot_game_name": "mod_muzzle",
+      "required": 0
+    },
+    {
+      "id": "5de4d2bfa842d3091d0f7ea7",
+      "parent_item_id": "5a7ae0c351dfba0017554310",
+      "slot_name": "Stock",
+      "slot_game_name": "mod_stock",
+      "required": 0
+    }
+  ],
+  "allowed": [
+    {
+      "slot_id": "5a7ae0c351dfba0017554312",
+      "allowed_item_id": "5a6b5ed88dc32e000c52ec86"
+    },
+    {
+      "slot_id": "5a7ae0c351dfba0017554313",
+      "allowed_item_id": "5a7b4960e899ef197b331a2d"
+    },
+    {
+      "slot_id": "5a7ae0c351dfba0017554314",
+      "allowed_item_id": "5a71e4f48dc32e001207fb26"
+    },
+    {
+      "slot_id": "5a7ae0c351dfba0017554315",
+      "allowed_item_id": "5a7ad2e851dfba0016153692"
+    },
+    {
+      "slot_id": "5a7ae0c351dfba0017554316",
+      "allowed_item_id": "5a7ad74e51dfba0015068f45"
+    },
+    {
+      "slot_id": "5a7ae0c351dfba0017554316",
+      "allowed_item_id": "6272379924e29f06af4d5ecb"
+    },
+    {
+      "slot_id": "5a7af207e899ef01931918b8",
+      "allowed_item_id": "6272379924e29f06af4d5ecb"
+    }
+  ]
+}

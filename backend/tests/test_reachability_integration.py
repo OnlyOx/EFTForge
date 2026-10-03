@@ -409,3 +409,28 @@ def test_multi_parent_assignment_fills_required_slot_before_optional_slot(db):
     result = optimize_weapon(db, "gun", OptimizeParams(include_items=["shared"]))
     assert result["status"] == "optimal"
     assert result["slot_pairs"] == [["z_required", "shared"]]
+
+
+def test_blocked_slot_on_unused_barrel_keeps_other_gas_block_placement(db):
+    from optimizer.explore import explore_weapon
+
+    setup_graph(
+        db,
+        {
+            ("barrel", "gun"): ["short_barrel", "a2_barrel"],
+            ("handguard", "gun"): ["ax15"],
+            ("short_gas", "short_barrel"): ["mk12"],
+            ("a2_gas", "a2_barrel"): ["mk12"],
+        },
+        required=["barrel", "short_gas", "a2_gas"],
+        fields={"ax15": {"conflicting_slot_ids": "a2_gas"}},
+    )
+    # AX-15 blocks the A2 barrel's slot, not the same gas block on a short barrel.
+    params = OptimizeParams(include_items=["short_barrel", "ax15", "mk12"], exclude_items=["a2_barrel"])
+    result = explore_weapon(db, "gun", params, "recoil", steps=10)
+    assert result["status"] == "complete"
+    assert result["points"]
+    for point in result["points"]:
+        build = point["build"]
+        assert set(build["selected_items"]) == {"short_barrel", "ax15", "mk12"}
+        assert dict(build["slot_pairs"]) == {"barrel": "short_barrel", "handguard": "ax15", "short_gas": "mk12"}

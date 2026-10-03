@@ -3,13 +3,9 @@
 What's deliberately not handled, and why:
   - presets as an alternative "base" competing with the base receiver - the
     one remaining piece of the reference optimizer's model this doesn't cover
-  - multi-slot placement variables - attempted (a real gap: 418 of 579
-    reachable M4A1 attachments have more than one valid parent slot), but the
-    exact formulation blew up solve time badly enough in testing (full test
-    suite went from single-digit seconds to 10+ minutes without finishing)
-    that it's not viable without real solver-performance work first. Reverted;
-    see milp.py's dependency-constraint comment for the narrow correctness
-    gap this leaves.
+Use selection variables with valid Hall capacity bounds, then recover distinct
+physical slots by bipartite matching. Add missing matching constraints lazily
+under the same solve deadline, including for auxiliary optimization paths.
 Found-in-Raid fallback pricing (below) and category include filters and
 TrueErgo mode (optimizer/milp.py) are implemented. Use Tchebycheff scalarization
 for balanced builds and explore.py for sampled two-objective tradeoffs.
@@ -171,6 +167,8 @@ class PreparedOptimizeContext:
     # secondary operation inside the original request deadline.
     local_price_cleanup: bool = False
     local_price_cache: dict = field(default_factory=dict)
+    # Reuse only graph-valid placement cuts within this request's candidate inputs.
+    placement_cut_cache: dict = field(default_factory=dict)
 
     @property
     def weapon(self):
@@ -461,6 +459,9 @@ def optimize_weapon(
             prepared.ammo, prepared.ubgl_grenade = ammo, ubgl_grenade
             prepared.ammo_loaded = True
     solve_options = {}
+    if prepared is not None and objective_axis == "recoil" and params.min_true_ergo_delta is not None:
+        # Reuse repeated TED-floor placement cuts without changing plain price cleanup.
+        solve_options["placement_cut_cache"] = prepared.placement_cut_cache.setdefault(objective_axis, {})
     if deadline is not None:
         solve_options["deadline"] = deadline
     if objective_axis is not None:

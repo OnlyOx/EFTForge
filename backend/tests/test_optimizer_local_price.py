@@ -89,10 +89,9 @@ def run_cleanup(db, params=None, deadline=1, status="optimal"):
         x = np.zeros(cb.n)
         x[[idx[i] for i in selected]] = 1
         x[len(ids)] = min(100, weapon.base_ergonomics + sum(mods[i].ergonomics_modifier or 0 for i in selected))
-        pairs = milp._order_pairs_parent_first(selected, slots, weapon.id, set(selected), cb.required_slots)
-        assert len(pairs) == len(selected)
-        for sid, iid in pairs:
-            x[cb.placements[sid, iid]] = 1
+        pairs = cb.placement.match(selected)
+        assert pairs is not None and len(pairs) == len(selected)
+        cb.placement.fill_assignment(x, pairs)
         constraint = cb.build()
         lhs = constraint.A @ x
         assert np.all(lhs >= constraint.lb - 1e-7)

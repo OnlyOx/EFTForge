@@ -83,6 +83,43 @@ def test_prepared_solves_match_fresh_constraints_stats_and_prices_without_querie
     assert not db.dirty
 
 
+def test_only_ted_floor_solves_share_placement_rows(db):
+    setup_graph(
+        db,
+        {
+            ("one", "gun"): ["a", "b", "c", "d"],
+            ("two", "gun"): ["a", "b", "d"],
+            ("three", "gun"): ["d", "e"],
+        },
+        fields={
+            "gun": {"weight": 2.0, "base_ergonomics": 60},
+            "a": {"recoil_modifier": -0.2},
+            "b": {"recoil_modifier": -0.1},
+        },
+    )
+    params = OptimizeParams(include_items=["c"])
+    prepared = prepare_optimize_weapon(db, "gun", params)
+    first = optimize_weapon(db, "gun", params, objective_axis="recoil", prepared=prepared)
+    assert first["status"] == "optimal"
+    assert prepared.placement_cut_cache == {}
+
+    first_ted = optimize_weapon(
+        db, "gun", replace(params, min_true_ergo_delta=50), objective_axis="recoil", prepared=prepared
+    )
+    second_ted = optimize_weapon(
+        db, "gun", replace(params, min_true_ergo_delta=45), objective_axis="recoil", prepared=prepared
+    )
+    assert first_ted["status"] == second_ted["status"] == "optimal"
+    assert first_ted["metrics"]["placement_refinement_count"] > 0
+    assert second_ted["metrics"]["placement_shared_cut_count"] > 0
+    assert second_ted["metrics"]["placement_refinement_count"] == 0
+
+    price = optimize_weapon(db, "gun", params, objective_axis="price", prepared=prepared)
+    assert price["status"] == "optimal"
+    assert price["metrics"]["placement_shared_cut_count"] == 0
+    assert set(price["selected_items"]) == {"c"}
+
+
 @pytest.mark.parametrize(
     "changes",
     [

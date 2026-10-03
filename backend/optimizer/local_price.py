@@ -82,7 +82,8 @@ def improve_price(
                 taken |= bits.get(item_ids[column], 0)
         if taken:
             for column in coeffs:
-                blocked[column] |= taken
+                if column <= n:
+                    blocked[column] |= taken
     moves = []
     for old in sorted(selected, key=lambda i: (-prices[i]["price_rub"], i)):
         if time.perf_counter() >= stop:
@@ -198,18 +199,13 @@ def improve_price(
             candidate_indices = [idx[i] for i in candidate]
             assignment[candidate_indices] = 1
             assignment[n] = min(100, base_ergo + float(ergo[candidate_indices].sum()))
-            from optimizer.milp import _order_pairs_parent_first
-
-            pairs = _order_pairs_parent_first(
-                candidate, item_to_valid_slots, weapon.id, candidate_set, cb.required_slots
-            )
-            if len(pairs) != len(candidate):
-                continue
-            for sid, iid in pairs:
-                column = cb.placements.get((sid, iid))
-                if column is not None:
-                    assignment[column] = 1
             checks += 1
+            placement = getattr(cb, "placement", None)
+            if placement is not None:
+                pairs = placement.match(candidate)
+                if pairs is None:
+                    continue
+                placement.fill_assignment(assignment, pairs)
             lhs = constraints.A @ assignment
             if assignment[n] < 0 or np.any(lhs < constraints.lb - 1e-7) or np.any(lhs > constraints.ub + 1e-7):
                 continue
