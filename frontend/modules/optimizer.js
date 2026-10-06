@@ -196,6 +196,8 @@ window.EFTForge.optimizer = (function () {
     const _defaultBannedModIds = [
         '591c4e1186f77410354b316e', // Axion Kobra sight shade
         '5a7c74b3e899ef0014332c29', // NSPU-M night scope
+        '6357c98711fb55120211f7e1', // M203 40mm underbarrel grenade launcher
+        '62e7e7bbe6da9612f743f1e0', // GP-25 Kostyor 40mm underbarrel grenade launcher
     ];
     const _defaultBanExceptions = new Set();
 
