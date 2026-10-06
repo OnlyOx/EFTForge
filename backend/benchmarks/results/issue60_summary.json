@@ -1,0 +1,1883 @@
+{
+  "runtime": {
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "sqlalchemy": "2.0.52",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+  "budget_seconds": 30,
+  "workers": 8,
+  "stages": {
+    "baseline_standalone": {
+      "directory": ".issue60-audit/baseline-bench2",
+      "record_count": 36,
+      "warmup_record_count": 12,
+      "measured_record_count": 24,
+      "returned_build_audits": 222,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cancellation.py": "d07218f310b21fac6bdf7bc4c284313a1efadd223cbeddd041e395c3e852c040",
+        "compat_map.py": "6d931d2ca5a0c7c8174128a4e9010ee91b97a4823b3cfd048dec4334cd22922b",
+        "explore.py": "ff7fe596ce424205e99397e3123a8b0caf7919acd88cf517077283af97520abb",
+        "explore_request.py": "649531ce4995219a109d48caa5b564a049f3bd30366d1825845f21f4da94059e",
+        "feasibility.py": "cb8fffcfb73281f897d0ada4aa0105665e0cd199b924b4bdb6ee1e80b7c775e5",
+        "gunsmith.py": "29c14209c58b2cbd760f59f45b18f1d3a25978bb24d13696aa63ffa166ff906d",
+        "local_price.py": "29bdc69e6ba0eb90db4f24b84f34a267c6ea62cd793e530d0bae8877ec7ca17c",
+        "matching_placement.py": "95e78a3bcba37646dc90096db0472069e4e75aee642f8020bd27441cfe161883",
+        "milp.py": "c1ebe93f57cadbcd5c4e0c140f6964a19d44ba02497234e106ef7bdec23b78ef",
+        "placement.py": "e3fde5fdafba8d35740230ca7f41a85861b4ba78511fda8d339250552dd06649",
+        "pricing.py": "b5429423e50f8e28fef9e8060d8c3f1486752599c82f735461e32c7142d52f92",
+        "process_runner.py": "5985f8f100cfe578b3426342cde65050b3d0ec851a0a10ad06f395cca440d35c",
+        "solver.py": "e815852f765d960d2ae19479dc5b876ce4cc46088c34c45bf8fbb2267c1ad17b"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 878.8901999942027,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 927.8159999958007,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2068.146400008118,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1531.5113999968162,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 873.4572000103071,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 929.9327999906382,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2120.357400010107,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1539.7412999882363,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 841.6077000001678,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 914.5772000047145,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2044.071600001189,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1487.1088000072632,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "lazy_or_prototype": {
+      "directory": ".issue60-audit/candidate-bench",
+      "record_count": 30,
+      "warmup_record_count": 10,
+      "measured_record_count": 20,
+      "returned_build_audits": 216,
+      "invalid_checks": 0,
+      "source_hashes_unavailable": "Controller was interrupted before metadata was retained; exclude this stage from reproducible final-source claims.",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 878.0108999926597,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 5238.083100004587,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 8234.870099986438,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1716.04600000137,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 875.981099990895,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 5300.19639999955,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 8382.71910000185,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1566.978000002564,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 869.3305000051623,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 5317.456499993568,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 8287.213900010101,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1585.5984999943757,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "one_hot_16": {
+      "directory": ".issue60-audit/final-paired",
+      "record_count": 96,
+      "warmup_record_count": 24,
+      "measured_record_count": 72,
+      "returned_build_audits": 592,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "d9b14a79c046d4730cb3bc60248743520fea95f7a0506d393e4c3f21c5279aec",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 1050.6719999975758,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 1156.636300001992,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 3406.1806999961846,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1107.920099995681,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2498.8730999903055,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 6560.9024000004865,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1725.0134000059916,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1774.5499000011478,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 896.0247000068193,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 985.7525999977952,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1096.9364999909885,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 3360.642400002689,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 6296.378899991396,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2481.525999988662,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1805.3878000064287,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1860.6579000042984,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 1022.8624000010313,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 1028.244499990251,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 3431.124299997464,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1126.4645000046585,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2601.118899998255,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 6121.742900009849,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1577.3791999963578,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 2,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1572.26260000607,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 957.9421000089496,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 911.3204000022961,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1027.0231000031345,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 2969.3715999892447,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 5707.869699996081,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2193.002500003786,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1579.9482000002172,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 3,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1604.8006000055466,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "one_hot_16_dense": {
+      "directory": ".issue60-audit/final-paired81",
+      "record_count": 8,
+      "warmup_record_count": 0,
+      "measured_record_count": 8,
+      "returned_build_audits": 336,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "d9b14a79c046d4730cb3bc60248743520fea95f7a0506d393e4c3f21c5279aec",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_81",
+          "wall_ms": 4980.578000002424,
+          "status": "complete",
+          "complete": true,
+          "point_count": 18,
+          "solve_count": 86,
+          "attempt_statuses": {
+            "optimal": 86
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_81",
+          "wall_ms": 8581.587799999397,
+          "status": "complete",
+          "complete": true,
+          "point_count": 18,
+          "solve_count": 86,
+          "attempt_statuses": {
+            "optimal": 86
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 30036.206899996614,
+          "status": "partial",
+          "complete": false,
+          "point_count": 14,
+          "solve_count": 76,
+          "attempt_statuses": {
+            "feasible": 3,
+            "optimal": 75,
+            "timeout": 4
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 7133.340000000317,
+          "status": "complete",
+          "complete": true,
+          "point_count": 14,
+          "solve_count": 82,
+          "attempt_statuses": {
+            "optimal": 82
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "log_grid": {
+      "directory": ".issue60-audit/log-paired0",
+      "record_count": 12,
+      "warmup_record_count": 0,
+      "measured_record_count": 12,
+      "returned_build_audits": 136,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "158d74c0809cf30e4e392e46da97f5ebc229b39c535cf6a174e627d32a72eba1",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 999.6687999955611,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 976.479200005997,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 2167.5668000098085,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1013.1855999934487,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2312.9823000053875,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 30013.281699997606,
+          "status": "partial",
+          "complete": false,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "feasible": 1,
+            "optimal": 10
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1630.354199995054,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1568.8527000020258,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "global_chord_before_shortcut": {
+      "directory": ".issue60-audit/global-paired0",
+      "record_count": 19,
+      "warmup_record_count": 12,
+      "measured_record_count": 7,
+      "returned_build_audits": 185,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "38c1d456b389e6d2efa0f5a35fc1c265f278a8bcd49fdf1726e71283f2b81314",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 1049.4653999921866,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 983.9093999908073,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 3014.427500005695,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1010.1208999985829,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2226.937299987185,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 7101.150799993775,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1704.0692000009585,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1631.9500000099652,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 916.22460000508,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 913.3991999988211,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 987.1493999962695,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "global_chord_shortcut": {
+      "directory": ".issue60-audit/global-shortcut-paired0",
+      "record_count": 24,
+      "warmup_record_count": 12,
+      "measured_record_count": 12,
+      "returned_build_audits": 272,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "38c1d456b389e6d2efa0f5a35fc1c265f278a8bcd49fdf1726e71283f2b81314",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 917.2530000068946,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 965.0939999992261,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 2871.867099995143,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 1028.3214999944903,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2222.187199993641,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 7054.4041999964975,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1709.7155000083148,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1490.423199997167,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 821.5460000064922,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_ordinary_10",
+          "wall_ms": 844.0718000056222,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 885.9374000021489,
+          "status": "complete",
+          "complete": true,
+          "point_count": 9,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_overswing_10",
+          "wall_ms": 2633.432400005404,
+          "status": "complete",
+          "complete": true,
+          "point_count": 11,
+          "solve_count": 15,
+          "attempt_statuses": {
+            "optimal": 15
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 6459.9770000058925,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2274.4664999918314,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1625.9235000034096,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "ak101_overswing_20",
+          "wall_ms": 1708.2913999911398,
+          "status": "complete",
+          "complete": true,
+          "point_count": 13,
+          "solve_count": 25,
+          "attempt_statuses": {
+            "optimal": 25
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "global_chord_shortcut_dense": {
+      "directory": ".issue60-audit/global-shortcut-paired81",
+      "record_count": 16,
+      "warmup_record_count": 8,
+      "measured_record_count": 8,
+      "returned_build_audits": 613,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "38c1d456b389e6d2efa0f5a35fc1c265f278a8bcd49fdf1726e71283f2b81314",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_overswing_81",
+          "wall_ms": 4806.459400002495,
+          "status": "complete",
+          "complete": true,
+          "point_count": 18,
+          "solve_count": 86,
+          "attempt_statuses": {
+            "optimal": 86
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_overswing_81",
+          "wall_ms": 7565.858699992532,
+          "status": "complete",
+          "complete": true,
+          "point_count": 18,
+          "solve_count": 86,
+          "attempt_statuses": {
+            "optimal": 86
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 30026.648099999875,
+          "status": "partial",
+          "complete": false,
+          "point_count": 7,
+          "solve_count": 38,
+          "attempt_statuses": {
+            "feasible": 6,
+            "optimal": 42,
+            "timeout": 2
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 7008.758700001636,
+          "status": "complete",
+          "complete": true,
+          "point_count": 14,
+          "solve_count": 82,
+          "attempt_statuses": {
+            "optimal": 82
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_overswing_81",
+          "wall_ms": 7772.306900005788,
+          "status": "complete",
+          "complete": true,
+          "point_count": 18,
+          "solve_count": 86,
+          "attempt_statuses": {
+            "optimal": 86
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_overswing_81",
+          "wall_ms": 4497.672399986186,
+          "status": "complete",
+          "complete": true,
+          "point_count": 18,
+          "solve_count": 86,
+          "attempt_statuses": {
+            "optimal": 86
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 7212.355399999069,
+          "status": "complete",
+          "complete": true,
+          "point_count": 14,
+          "solve_count": 82,
+          "attempt_statuses": {
+            "optimal": 82
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 30028.965199991944,
+          "status": "partial",
+          "complete": false,
+          "point_count": 7,
+          "solve_count": 38,
+          "attempt_statuses": {
+            "feasible": 7,
+            "optimal": 42,
+            "timeout": 1
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    },
+    "hybrid_snapped_floor": {
+      "directory": ".issue60-audit/hybrid-paired-true",
+      "record_count": 16,
+      "warmup_record_count": 8,
+      "measured_record_count": 8,
+      "returned_build_audits": 309,
+      "invalid_checks": 0,
+      "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+      "source_sha256": {
+        "milp.py": "fc92641d001ce94193369a53e8842772e9b483c4bcf2fd3a7691022977a73617",
+        "ted_outer.py": "8998746ea37967e683f0ded66b1ebfa7159afbde1a1c6f54584764ccd6655c2a",
+        "local_price.py": "2318e480590a4a0af331c7097f34aac0296e911f1e6eb054702b3d75e5ca35e3"
+      },
+      "stats_sha256": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "seed0_curves": [
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2249.773000003188,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 7355.928100005258,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 30010.661200009054,
+          "status": "partial",
+          "complete": false,
+          "point_count": 8,
+          "solve_count": 38,
+          "attempt_statuses": {
+            "feasible": 3,
+            "optimal": 44,
+            "timeout": 1
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "warmup",
+          "round": 0,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 7180.866599999717,
+          "status": "complete",
+          "complete": true,
+          "point_count": 14,
+          "solve_count": 82,
+          "attempt_statuses": {
+            "optimal": 82
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 7560.543499988853,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_10",
+          "wall_ms": 2380.1027000008617,
+          "status": "complete",
+          "complete": true,
+          "point_count": 10,
+          "solve_count": 11,
+          "attempt_statuses": {
+            "optimal": 11
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "baseline",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 7501.278199997614,
+          "status": "complete",
+          "complete": true,
+          "point_count": 14,
+          "solve_count": 82,
+          "attempt_statuses": {
+            "optimal": 82
+          },
+          "invalid_build_checks": 0
+        },
+        {
+          "phase": "measured",
+          "round": 1,
+          "revision": "candidate",
+          "case_id": "m4_true_ergo_overswing_81",
+          "wall_ms": 30015.206899988698,
+          "status": "partial",
+          "complete": false,
+          "point_count": 7,
+          "solve_count": 38,
+          "attempt_statuses": {
+            "feasible": 2,
+            "optimal": 44,
+            "timeout": 2
+          },
+          "invalid_build_checks": 0
+        }
+      ]
+    }
+  },
+  "total_recorded_returned_build_audits": 2881,
+  "total_invalid_checks": 0,
+  "decision": "Do not enable the correction: measured runtime exceeds the requested speed constraint.",
+  "proposal": {
+    "path": "proposals/issue60_secant.patch",
+    "sha256": "40c26c6b16b672145151f7fa763539bb3a4be87175557d268c873e5989aa07df",
+    "files": [
+      "backend/optimizer/milp.py",
+      "backend/optimizer/local_price.py",
+      "backend/optimizer/solver.py",
+      "backend/optimizer/ted_outer.py",
+      "backend/tests/test_optimizer_ergo_boundary.py",
+      "backend/tests/test_optimizer_termination.py",
+      "backend/tests/test_optimizer_ted_outer.py"
+    ],
+    "backend_tests": {
+      "passed": 424,
+      "skipped": 3,
+      "seconds": 77.65
+    },
+    "preservation_selections": 768
+  },
+  "active_optimizer_restored_to_prior_speed_work": true,
+  "raw_evidence": {
+    "path": "issue60_raw_evidence.zip",
+    "sha256": "ce9c512bb11aee021d18338c16f66e52cae9da83a0e1ca020c919024713382b8",
+    "stages": [
+      "final-paired",
+      "final-paired81",
+      "log-paired0",
+      "global-shortcut-paired0",
+      "global-shortcut-paired81",
+      "hybrid-paired-true"
+    ]
+  }
+}

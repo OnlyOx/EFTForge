@@ -538,16 +538,22 @@ window.EFTForge = window.EFTForge || {};
     async function _openNative(key, parentNode, slot) {
         if (_tableOpen()) document.getElementById("att-table-close-btn")?.click();
         const seq = ++_nativeSeq;
-        // A slot whose parts aren't cached needs a round trip: its box spins a throbber
-        // (the viewer's setSlotLoading) so the click doesn't read as dead.
-        const fetching = !EFTForge.state.allowedCache[slot.id];
+        // A load that needs a round trip (the allowed list, or the candidate batch a filled
+        // slot nearly always needs) spins a throbber in the slot's box (the viewer's
+        // setSlotLoading) so the click doesn't read as dead. A full cache hit settles before
+        // the await below returns, so it opens straight away without a flicker.
+        let settled = false;
+        const pending = _loadSlotCandidates(parentNode, slot, { stale: () => seq !== _nativeSeq });
+        pending.finally(() => { settled = true; }).catch(() => {});
+        await null;
+        const fetching = !settled;
         if (fetching) {
             _nativeLoadingKey = key;
             if (_ready) send("setSlotLoading", key);
         }
         let loaded;
         try {
-            loaded = await _loadSlotCandidates(parentNode, slot, { stale: () => seq !== _nativeSeq });
+            loaded = await pending;
         } finally {
             if (_nativeLoadingKey === key) _nativeLoadingKey = null;
         }

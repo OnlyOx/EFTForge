@@ -1,0 +1,1241 @@
+diff --git a/backend/optimizer/milp.py b/backend/optimizer/milp.py
+--- a/backend/optimizer/milp.py
++++ b/backend/optimizer/milp.py
+@@ -16,16 +16,14 @@
+ 
+ from optimizer.local_price import improve_price
+ from optimizer.matching_placement import MatchingPlacementModel
++from optimizer.ted_outer import TedOuterConstraint
+ 
+ from stats import (
+     MOA_K,
+     _compute_stats,
+     ammo_accuracy_factor,
+     apply_full_mag_ammo,
+-    effective_ergo,
+     full_mag_ammo_weight,
+-    overswing_limit_kg,
+-    overswing_limit_slope,
+     ted_cost_per_kg,
+ )
+ 
+@@ -114,9 +112,7 @@
+ # stops moving), repeats a k I've already tried, or the shared deadline hits.
+ MAX_TRUE_ERGO_REFINE_ITERS = 3
+ 
+-# The overswing limit curve (stats.py's overswing_limit_kg and its slope) and MOA_K (its
+-# accuracy_moa formula) are imported from stats.py above, not re-typed here - this
+-# module's tangent-cut approximation must stay derived from the exact same curve.
++# Keep objective slopes and MOA constants shared with the build-stat formulas.
+ 
+ # Safe upper bound on the per-candidate-barrel MOA gate terms below - real
+ # values (COI a few units, accuracy mods a few hundred percent at most) stay
+@@ -169,12 +165,31 @@
+         self.n = n
+         self.rows = []
+         self.placement = None
++        self.binary_columns = set()
++        self.column_upper_bounds = {}
++        self.ted_constraint = None
+         self._compiled = None
+         self._compiled_row_count = 0
+         self._compiled_column_count = 0
+         # Keep compressed row pointers so we only append one index per row.
+         self._triplets = ([], [], [0], [], [])
+         self._triplet_row_count = 0
++
++    def add_binary(self):
++        column = self.n
++        self.n += 1
++        self.binary_columns.add(column)
++        return column
++
++    def copy(self):
++        other = ConstraintBuilder(self.n)
++        other.rows = list(self.rows)
++        other.placement = self.placement
++        other.binary_columns = set(self.binary_columns)
++        other.column_upper_bounds = dict(self.column_upper_bounds)
++        if self.ted_constraint is not None:
++            other.ted_constraint = self.ted_constraint.for_builder(other)
++        return other
+ 
+     def le(self, coeffs: dict, rhs):
+         self.rows.append((coeffs, -np.inf, rhs))
+@@ -318,37 +333,6 @@
+     return lo, hi
+ 
+ 
+-def _add_overswing_cut_at(
+-    cb, idx, mods, item_ids, base_ergo, base_weight, equip_ergo_modifier, anchor_ergo, solve_stats=None, margin=0.0
+-):
+-    """Adds one linear tangent-line cut - total_weight <= overswing_limit_kg(effective_ergo)'s
+-    tangent at anchor_ergo - hard-constraining out exactly the build that sits
+-    at that ergo value and everything else the tangent's slope excludes. The limit is
+-    convex in ergo, so a MILP (linear only) can't encode the true "weight <=
+-    limit(ergo)" region directly - that region is itself non-convex - but a
+-    single tangent line is always a sound (never lets an overswinging build
+-    through) local bound. See _solve_avoiding_overswing for why this is
+-    called with one fresh anchor per rejected solve rather than a fixed grid
+-    of anchors ANDed together up front.
+-
+-    margin raises the bar above plain "never overswing": weight <= 300 / (100 + margin -
+-    ergo) is "TED >= margin" wherever ergo reaches the margin, so _solve_with_min_true_ergo
+-    reuses this cut with margin = min_true_ergo_delta to hard-floor true TED instead of
+-    just forbidding overswing (margin=0, the default, is the plain overswing cut).
+-    """
+-    b = equip_ergo_modifier
+-    e0 = effective_ergo(anchor_ergo, b)
+-    kg0 = overswing_limit_kg(e0, margin)
+-    slope = overswing_limit_slope(e0, margin) * (1 + b)  # d(limit)/d(total_ergo) via chain rule E = total_ergo*(1+b)
+-    coeffs = {
+-        idx[i]: (solve_stats.item_weights[i] if solve_stats else (mods[i].weight or 0))
+-        - slope * (mods[i].ergonomics_modifier or 0)
+-        for i in item_ids
+-    }
+-    rhs = kg0 + slope * (base_ergo - anchor_ergo) - base_weight
+-    cb.le(coeffs, rhs)
+-
+-
+ def _add_max_moa_constraint(cb, idx, mods, weapon, item_ids, max_moa, ammo=None):
+     """Hard-constrains stats.py's accuracy_moa <= max_moa. COI-bearing items
+     (alternate barrels) override the weapon's own center_of_impact when
+@@ -748,12 +732,7 @@
+ def _solve_relaxation_once(
+     c, cb, n, item_ids, weapon_id, item_to_valid_slots, prices, deadline=None, extra_bounds=(100.0,)
+ ):
+-    """extra_bounds is the upper bound for each trailing continuous column
+-    past the n binary x_i's - normally just capped_ergo (index n, bounded
+-    [0, 100]). Tchebycheff solves (see _solve_tchebycheff_once) pass a second
+-    entry for the unbounded-above min-max auxiliary z, reusing this same
+-    solve/status-handling logic instead of duplicating it for one extra
+-    column."""
++    """Bound the continuous auxiliaries separately from appended cut binaries."""
+     # Keep the legacy helper contract when a caller supplies only item columns.
+     cb.n = max(cb.n, n + len(extra_bounds))
+     matrix_start = time.perf_counter()
+@@ -761,12 +740,17 @@
+     matrix_ms = (time.perf_counter() - matrix_start) * 1000
+     extra_n = cb.n - n
+     upper = np.ones(cb.n)
+-    upper[n] = extra_bounds[0]
+-    if len(extra_bounds) > 1:
+-        upper[-1] = extra_bounds[1]
++    for column, bound in enumerate(extra_bounds, n):
++        upper[column] = bound
++    for column, bound in cb.column_upper_bounds.items():
++        upper[column] = bound
++    for column in cb.binary_columns:
++        upper[column] = 1
+     c = np.pad(c, (0, cb.n - len(c)))
+     bounds = Bounds(np.zeros(cb.n), upper)
+     integrality = np.concatenate([np.ones(n), np.zeros(extra_n)])
++    for column in cb.binary_columns:
++        integrality[column] = 1
+ 
+     time_limit = SOLVE_TIME_LIMIT_SECONDS
+     if deadline is not None:
+@@ -802,6 +786,7 @@
+         and np.all(np.asarray(res.x[:n]) >= -1e-6)
+         and np.all(np.asarray(res.x[:n]) <= 1 + 1e-6)
+         and np.allclose(res.x[:n], np.rint(res.x[:n]), atol=1e-5)
++        and all(abs(res.x[column] - round(res.x[column])) <= 1e-5 for column in cb.binary_columns)
+     )
+     if res.status == 2:
+         return _empty_result("infeasible", "No feasible build satisfies these constraints.", metadata, metrics)
+@@ -874,6 +859,95 @@
+ MAX_OVERSWING_CUT_ITERS = 40
+ 
+ 
++def _solve_with_ted_constraint(
++    c,
++    cb,
++    n,
++    item_ids,
++    idx,
++    weapon,
++    mods,
++    item_to_valid_slots,
++    prices,
++    base_ergo,
++    base_weight,
++    equip_ergo_modifier,
++    strength_level,
++    min_true_ergo_delta=None,
++    prevent_overswing=False,
++    deadline=None,
++    extra_bounds=(100.0,),
++    solve_stats=None,
++):
++    """Refine a sound outer relaxation and validate the existing exact stats."""
++    if cb.ted_constraint is None:
++        # Keep the private helper usable with a caller-supplied exact stats oracle.
++        inputs = SimpleNamespace(
++            weapon=SimpleNamespace(
++                base_ergonomics=base_ergo,
++                weight=base_weight,
++                factory_attachment_ids=getattr(weapon, "factory_attachment_ids", None),
++                factory_ergonomics=getattr(weapon, "factory_ergonomics", None),
++                factory_weight=getattr(weapon, "factory_weight", None),
++            ),
++            mods=mods,
++            equip_ergo_modifier=equip_ergo_modifier,
++            ammo=getattr(solve_stats, "ammo", None),
++            ubgl_grenade=getattr(solve_stats, "ubgl_grenade", None),
++            item_weights=(
++                solve_stats.item_weights if solve_stats else {i: getattr(mods[i], "weight", 0) or 0 for i in item_ids}
++            ),
++        )
++        cb.ted_constraint = TedOuterConstraint(
++            inputs, cb, idx, min_true_ergo_delta=min_true_ergo_delta, prevent_overswing=prevent_overswing
++        )
++    constraint = cb.ted_constraint
++    attempts = []
++    rejected = set()
++    label = "Overswing" if min_true_ergo_delta is None else "TrueErgo-floor"
++    for _ in range(MAX_OVERSWING_CUT_ITERS):
++        result = _solve_once(
++            c, cb, n, item_ids, weapon.id, item_to_valid_slots, prices, deadline=deadline, extra_bounds=extra_bounds
++        )
++        attempts.append(result)
++        if result["status"] not in ("optimal", "feasible"):
++            result["metrics"] = _aggregate_attempt_metrics(attempts)
++            return result
++        stats = (
++            solve_stats.compute(result["selected_items"])
++            if solve_stats
++            else _compute_stats(weapon, result["selected_items"], mods, strength_level, equip_ergo_modifier)
++        )
++        if constraint.accepts_stats(stats):
++            if any(attempt["status"] != "optimal" for attempt in attempts):
++                result = {**result}
++                result["status"] = "feasible"
++                result["reason"] = f"At least one {label} solve reached a limit; showing the best feasible build found."
++                result["termination"] = {
++                    "solver_status_code": 1,
++                    "solver_message": f"{label} solve incomplete.",
++                    "attempts": [attempt.get("termination", {}) for attempt in attempts],
++                }
++            result["metrics"] = _aggregate_attempt_metrics(attempts)
++            return result
++        selected = frozenset(result["selected_items"])
++        if selected in rejected or not constraint.add_cut(selected):
++            # Exclude only a selection whose exact exported stats failed the request.
++            cb.ge({idx[i]: -1 if i in selected else 1 for i in item_ids}, 1 - len(selected))
++        rejected.add(selected)
++    reason = f"{label} constraint cut iteration limit reached before finding a feasible build."
++    return _empty_result(
++        "error",
++        reason,
++        {
++            "solver_status_code": 4,
++            "solver_message": reason,
++            "attempts": [attempt.get("termination", {}) for attempt in attempts],
++        },
++        _aggregate_attempt_metrics(attempts),
++    )
++
++
+ def _solve_avoiding_overswing(
+     c,
+     cb,
+@@ -892,67 +966,24 @@
+     extra_bounds=(100.0,),
+     solve_stats=None,
+ ):
+-    """Same contract as _solve_once, but hard-constrains the result to
+-    stats.py's own "overswing" definition (total_weight <= overswing_limit_kg(effective_ergo))
+-    without the unsoundness-by-omission a fixed grid of ANDed tangent cuts
+-    has: since the limit is convex, ANDing several tangent lines only ever shrinks
+-    the modeled region as more/wider-spread anchors are added, it never
+-    converges toward the true curve - so a weapon whose viable builds all
+-    land far from every anchor could see every one of them rejected even
+-    though none of them actually overswing (see SVDS + suppressor + prevent
+-    overswing).
+-
+-    Solves once with whatever overswing cuts are already in cb, checks the
+-    result against stats._compute_stats()'s exact formula, and - only if it
+-    actually overswings - adds one new cut anchored exactly at that build's
+-    own total_ergo (tight there, so it's guaranteed to exclude that specific
+-    build without extrapolating a stale bound across the whole ergo range)
+-    and retries. cb accumulates cuts across calls, so repeat calls (e.g. the
+-    TrueErgo anchor sweep below) never rediscover the same violation twice.
+-    """
+-    attempts = []
+-    for _ in range(MAX_OVERSWING_CUT_ITERS):
+-        result = _solve_once(
+-            c, cb, n, item_ids, weapon.id, item_to_valid_slots, prices, deadline=deadline, extra_bounds=extra_bounds
+-        )
+-        attempts.append(result)
+-        if result["status"] not in ("optimal", "feasible"):
+-            result["metrics"] = _aggregate_attempt_metrics(attempts)
+-            return result
+-        stats = (
+-            solve_stats.compute(result["selected_items"])
+-            if solve_stats
+-            else _compute_stats(weapon, result["selected_items"], mods, strength_level, equip_ergo_modifier)
+-        )
+-        if not stats["overswing"]:
+-            incomplete = any(attempt["status"] != "optimal" for attempt in attempts)
+-            if incomplete:
+-                result = {**result}
+-                result["status"] = "feasible"
+-                result["reason"] = (
+-                    "At least one overswing-cut solve reached a limit; showing the best feasible build found."
+-                )
+-                result["termination"] = {
+-                    "solver_status_code": 1,
+-                    "solver_message": "Overswing-cut solve incomplete.",
+-                    "attempts": [attempt.get("termination", {}) for attempt in attempts],
+-                }
+-            result["metrics"] = _aggregate_attempt_metrics(attempts)
+-            return result
+-        selected_ergo = base_ergo + sum((mods[i].ergonomics_modifier or 0) for i in result["selected_items"])
+-        _add_overswing_cut_at(
+-            cb, idx, mods, item_ids, base_ergo, base_weight, equip_ergo_modifier, selected_ergo, solve_stats
+-        )
+-    reason = "Overswing constraint cut iteration limit reached before finding a feasible build."
+-    return _empty_result(
+-        "error",
+-        reason,
+-        {
+-            "solver_status_code": 4,
+-            "solver_message": reason,
+-            "attempts": [attempt.get("termination", {}) for attempt in attempts],
+-        },
+-        _aggregate_attempt_metrics(attempts),
++    return _solve_with_ted_constraint(
++        c,
++        cb,
++        n,
++        item_ids,
++        idx,
++        weapon,
++        mods,
++        item_to_valid_slots,
++        prices,
++        base_ergo,
++        base_weight,
++        equip_ergo_modifier,
++        strength_level,
++        prevent_overswing=True,
++        deadline=deadline,
++        extra_bounds=extra_bounds,
++        solve_stats=solve_stats,
+     )
+ 
+ 
+@@ -974,90 +1005,27 @@
+     deadline=None,
+     extra_bounds=(100.0,),
+     solve_stats=None,
++    prevent_overswing=False,
+ ):
+-    """Same contract and same lazy-cutting-plane technique as
+-    _solve_avoiding_overswing (min_true_ergo_delta=0 there is exactly "never overswing"),
+-    generalized to hard-floor true TED - stats.py's
+-    true_ergo_delta - at min_true_ergo_delta instead. Explore's per-point sweep uses this
+-    when its TrueErgo toggle is on, so the build picked for each point on the
+-    curve is the one that actually clears that point's TED tier, not just its
+-    raw ergonomics sum - a heavy high-ergo part can't stand in for a light
+-    one anymore.
+-
+-    Solves once, checks the result's true TED, and - only if it falls short -
+-    adds one new tangent cut anchored exactly at that build's own total_ergo
+-    (see _add_overswing_cut_at's margin parameter) and retries. Each cut only
+-    ever excludes builds already proven to fall short, so this can't reject a
+-    build that genuinely clears the floor - same soundness argument as the
+-    overswing case, just shifted.
+-    """
+-    attempts = []
+-    rejected = set()
+-    for _ in range(MAX_OVERSWING_CUT_ITERS):
+-        result = _solve_once(
+-            c, cb, n, item_ids, weapon.id, item_to_valid_slots, prices, deadline=deadline, extra_bounds=extra_bounds
+-        )
+-        attempts.append(result)
+-        if result["status"] not in ("optimal", "feasible"):
+-            result["metrics"] = _aggregate_attempt_metrics(attempts)
+-            return result
+-        stats = (
+-            solve_stats.compute(result["selected_items"])
+-            if solve_stats
+-            else _compute_stats(weapon, result["selected_items"], mods, strength_level, equip_ergo_modifier)
+-        )
+-        if stats["true_ergo_delta"] >= min_true_ergo_delta - 1e-7:
+-            incomplete = any(attempt["status"] != "optimal" for attempt in attempts)
+-            if incomplete:
+-                result = {**result}
+-                result["status"] = "feasible"
+-                result["reason"] = (
+-                    "At least one TrueErgo-floor solve reached a limit; showing the best feasible build found."
+-                )
+-                result["termination"] = {
+-                    "solver_status_code": 1,
+-                    "solver_message": "TrueErgo-floor solve incomplete.",
+-                    "attempts": [attempt.get("termination", {}) for attempt in attempts],
+-                }
+-            result["metrics"] = _aggregate_attempt_metrics(attempts)
+-            return result
+-        selected = frozenset(result["selected_items"])
+-        if selected in rejected:
+-            # Exclude only a selection whose exported stats already failed this floor.
+-            cb.ge({idx[i]: -1 if i in selected else 1 for i in item_ids}, 1 - len(selected))
+-            continue
+-        rejected.add(selected)
+-        selected_ergo = base_ergo + sum((mods[i].ergonomics_modifier or 0) for i in selected)
+-        if min_true_ergo_delta > 0 and effective_ergo(selected_ergo, equip_ergo_modifier) < min_true_ergo_delta - 1e-7:
+-            # TED can't exceed the build's own ergo (a light build needs none, so its TED
+-            # is its ergo), so no weight cut reaches a floor above it: floor the ergo.
+-            cb.ge(
+-                {idx[i]: (mods[i].ergonomics_modifier or 0) for i in item_ids},
+-                min_true_ergo_delta / (1 + equip_ergo_modifier) - base_ergo,
+-            )
+-            continue
+-        _add_overswing_cut_at(
+-            cb,
+-            idx,
+-            mods,
+-            item_ids,
+-            base_ergo,
+-            base_weight,
+-            equip_ergo_modifier,
+-            selected_ergo,
+-            solve_stats,
+-            margin=min_true_ergo_delta,
+-        )
+-    reason = "TrueErgo-floor constraint cut iteration limit reached before finding a feasible build."
+-    return _empty_result(
+-        "error",
+-        reason,
+-        {
+-            "solver_status_code": 4,
+-            "solver_message": reason,
+-            "attempts": [attempt.get("termination", {}) for attempt in attempts],
+-        },
+-        _aggregate_attempt_metrics(attempts),
++    return _solve_with_ted_constraint(
++        c,
++        cb,
++        n,
++        item_ids,
++        idx,
++        weapon,
++        mods,
++        item_to_valid_slots,
++        prices,
++        base_ergo,
++        base_weight,
++        equip_ergo_modifier,
++        strength_level,
++        min_true_ergo_delta=min_true_ergo_delta,
++        prevent_overswing=prevent_overswing,
++        deadline=deadline,
++        extra_bounds=extra_bounds,
++        solve_stats=solve_stats,
+     )
+ 
+ 
+@@ -1174,18 +1142,8 @@
+     for kind in ("ergo", "recoil", "price"):
+         c = _pure_axis_objective(kind, item_ids, idx, mods, prices, n)
+         if params.prevent_overswing:
+-            # Each axis gets its own copy of cb's rows rather than sharing (and
+-            # mutating) the caller's cb directly - overswing cuts anchored while
+-            # chasing one axis's extreme (e.g. pure price, which might land at
+-            # very low ergo) are only sound *there*, and accumulating them
+-            # across all three axes plus the final Tchebycheff solve recreates
+-            # exactly the "several ANDed tangent cuts jointly exclude every
+-            # non-overswinging build" failure _solve_avoiding_overswing's
+-            # adaptive, one-cut-per-violation design exists to avoid (see its
+-            # own docstring, and the SVDS+suppressor regression test).
+-            axis_cb = ConstraintBuilder(cb.n)
+-            axis_cb.rows = list(cb.rows)
+-            axis_cb.placement = cb.placement
++            # Keep each normalization solve's refinement budget independent.
++            axis_cb = cb.copy()
+             candidate = _solve_avoiding_overswing(
+                 c,
+                 axis_cb,
+@@ -1253,9 +1211,9 @@
+     recoil_range = max(nadir["recoil"] - ideal["recoil"], 1e-4)
+     price_range = max(nadir["price"] - ideal["price"], 1.0)
+ 
+-    cb2 = ConstraintBuilder(cb.n + 1)
+-    cb2.rows.extend(cb.rows)
+-    cb2.placement = cb.placement
++    cb2 = cb.copy()
++    cb2.n += 1
++    cb2.column_upper_bounds[z_idx] = TCHEBYCHEFF_Z_BOUND
+ 
+     # z >= ergo_w * (ideal_ergo - capped_ergo) / ergo_range
+     cb2.ge({z_idx: 1, ergo_idx: ergo_w / ergo_range}, ergo_w * ideal["ergo"] / ergo_range)
+@@ -1445,11 +1403,7 @@
+             else _weighted_objective(item_ids, idx, mods, prices, params)
+         )
+         if params.min_true_ergo_delta is not None:
+-            # min_true_ergo_delta (Explore-internal, see explore.py) and prevent_overswing both
+-            # ultimately floor the same TED surface, just at different levels
+-            # (prevent_overswing is exactly "true_ergo_delta >= 0") - take whichever floor is
+-            # higher rather than running two separate cutting-plane loops.
+-            floor = max(params.min_true_ergo_delta, 0.0) if params.prevent_overswing else params.min_true_ergo_delta
++            # Validate the displayed TED floor and strict overswing boundary together.
+             result = _solve_with_min_true_ergo(
+                 c,
+                 cb,
+@@ -1464,9 +1418,10 @@
+                 base_weight,
+                 params.equip_ergo_modifier,
+                 params.strength_level,
+-                floor,
++                params.min_true_ergo_delta,
+                 deadline=deadline,
+                 solve_stats=solve_stats,
++                prevent_overswing=params.prevent_overswing,
+             )
+             if local_price_cleanup and objective_axis == "recoil":
+                 result = improve_price(
+diff --git a/backend/optimizer/local_price.py b/backend/optimizer/local_price.py
+--- a/backend/optimizer/local_price.py
++++ b/backend/optimizer/local_price.py
+@@ -218,10 +218,15 @@
+                 if pairs is None:
+                     continue
+                 placement.fill_assignment(assignment, pairs)
++            ted_constraint = cb.ted_constraint
++            if ted_constraint is not None and not ted_constraint.fill_assignment(assignment):
++                continue
+             lhs = constraints.A @ assignment
+             if assignment[n] < 0 or np.any(lhs < constraints.lb - 1e-7) or np.any(lhs > constraints.ub + 1e-7):
+                 continue
+             stats = solve_stats.compute(candidate)
++            if ted_constraint is not None and not ted_constraint.accepts_stats(stats):
++                continue
+             if (
+                 stats["total_ergo"] < original_stats["total_ergo"]
+                 or stats["recoil_vertical"] > original_stats["recoil_vertical"]
+diff --git a/backend/optimizer/solver.py b/backend/optimizer/solver.py
+--- a/backend/optimizer/solver.py
++++ b/backend/optimizer/solver.py
+@@ -91,9 +91,8 @@
+     # to it.
+     use_tchebycheff: bool = True
+     # Hard-constrains the build to stats._compute_stats()'s own "overswing"
+-    # definition (total_weight <= overswing_limit_kg(effective_ergo)), approximated
+-    # by tangent cuts at each rejected build's own ergo since a MILP can't
+-    # encode the true convex threshold directly.
++    # definition. Refine a sound secant outer relaxation only after a rejected
++    # build, and check the shared exact stats before accepting a result.
+     prevent_overswing: bool = False
+     # Upper bound on stats.py's accuracy_moa (lower MOA = tighter grouping).
+     max_moa: Optional[float] = None
+diff --git a/backend/optimizer/ted_outer.py b/backend/optimizer/ted_outer.py
+new file mode 100644
+--- /dev/null
++++ b/backend/optimizer/ted_outer.py
+@@ -0,0 +1,268 @@
++"""Preserve every feasible aiming build with lazy outer secant disjunctions."""
++
++import copy
++import math
++
++from stats import SWAY_START_KG
++
++TED_FLOOR_EPSILON = 1e-7
++_CUT_EPSILON = 1e-7
++_WEIGHT_RECIPROCAL = 100.0 * SWAY_START_KG
++_GRID_SEGMENTS = 16
++
++
++class TedOuterConstraint:
++    """Check exact stats and separate clearly invalid optimistic affine points."""
++
++    def __init__(self, solve_stats, cb, idx, min_true_ergo_delta=None, prevent_overswing=False):
++        self.solve_stats = solve_stats
++        self.cb = cb
++        self.idx = idx
++        self.min_true_ergo_delta = min_true_ergo_delta
++        self.prevent_overswing = prevent_overswing
++        self.cuts = []
++        self.grid = []
++        self.grid_bits = ()
++        self.cut_anchors = set()
++        self.linear_cut_anchors = set()
++        self.necessary_added = False
++        self.margin = None
++        if min_true_ergo_delta is not None:
++            if not math.isfinite(min_true_ergo_delta):
++                raise ValueError("TrueErgo floor must be finite")
++            # Permit every unrounded value whose exported two-decimal TED can pass.
++            rounded_floor = min_true_ergo_delta
++            if abs(rounded_floor) <= 101.0:
++                rounded_floor = math.ceil((rounded_floor - TED_FLOOR_EPSILON) * 100.0 - 1e-8) / 100.0
++            self.margin = rounded_floor - 0.005 - TED_FLOOR_EPSILON
++        if prevent_overswing:
++            self.margin = max(0.0, self.margin) if self.margin is not None else 0.0
++
++        self._prepare_affine_stats()
++        self.cb.ted_constraint = self
++
++    @property
++    def cut_count(self):
++        return len(self.grid) + len(self.cuts) + len(self.linear_cut_anchors)
++
++    def for_builder(self, cb):
++        model = copy.copy(self)
++        model.cb = cb
++        model.cuts = list(self.cuts)
++        model.grid = list(self.grid)
++        model.cut_anchors = set(self.cut_anchors)
++        model.linear_cut_anchors = set(self.linear_cut_anchors)
++        return model
++
++    def _prepare_affine_stats(self):
++        weapon, mods = self.solve_stats.weapon, self.solve_stats.mods
++        scale = 1.0 + self.solve_stats.equip_ergo_modifier
++        if not math.isfinite(scale) or scale < 0:
++            raise ValueError("Equipment ergonomics scale must be finite and nonnegative")
++        base_ergo = getattr(weapon, "base_ergonomics", None) or 0.0
++        base_weight = getattr(weapon, "weight", None) or 0.0
++        self.ergo_constant = base_ergo
++        self.weight_constant = base_weight
++        self.ergo_coefficients = {self.idx[i]: getattr(mods[i], "ergonomics_modifier", None) or 0.0 for i in self.idx}
++        self.weight_coefficients = {self.idx[i]: self.solve_stats.item_weights[i] for i in self.idx}
++
++        factory_ids = set(filter(None, (getattr(weapon, "factory_attachment_ids", None) or "").split(",")))
++        if factory_ids and factory_ids <= self.idx.keys():
++            factory_ergo = getattr(weapon, "factory_ergonomics", None) or base_ergo
++            factory_weight = getattr(weapon, "factory_weight", None) or base_weight
++            factory_ergo_sum = math.fsum(getattr(mods[i], "ergonomics_modifier", None) or 0.0 for i in factory_ids)
++            factory_weight_sum = math.fsum(getattr(mods[i], "weight", None) or 0.0 for i in factory_ids)
++            # Overestimate ergo and underestimate weight for either preset state.
++            self.ergo_constant += max(0.0, factory_ergo - base_ergo - factory_ergo_sum)
++            self.weight_constant += min(0.0, factory_weight - base_weight - factory_weight_sum)
++
++        ammo = getattr(self.solve_stats, "ammo", None)
++        grenade = getattr(self.solve_stats, "ubgl_grenade", None)
++        has_ammo = ammo is not None and getattr(ammo, "is_ammo", False)
++        has_grenade = (
++            grenade is not None
++            and getattr(grenade, "is_ammo", False)
++            and bool(getattr(grenade, "caliber", None))
++            and bool(getattr(grenade, "weight", None))
++        )
++        grenade_items = {
++            i
++            for i in self.idx
++            if has_grenade
++            and getattr(mods[i], "caliber", None) == grenade.caliber
++            and not getattr(mods[i], "is_ammo", False)
++        }
++        if has_ammo or grenade_items:
++            # Cover the rounded base and every subsequent loaded-weight round.
++            self.ergo_constant += 0.005
++            self.weight_constant -= 0.0005
++            for i, column in self.idx.items():
++                if has_ammo and getattr(mods[i], "magazine_capacity", None):
++                    self.weight_coefficients[column] -= 0.0005
++                if i in grenade_items:
++                    self.weight_coefficients[column] -= 0.0005
++
++        self.ergo_constant *= scale
++        self.ergo_coefficients = {column: scale * coefficient for column, coefficient in self.ergo_coefficients.items()}
++        values = [
++            self.ergo_constant,
++            self.weight_constant,
++            *self.ergo_coefficients.values(),
++            *self.weight_coefficients.values(),
++        ]
++        if not all(math.isfinite(value) for value in values):
++            raise ValueError("Aiming constraint coefficients must be finite")
++        self.weight_upper_bound = self.weight_constant + math.fsum(
++            max(0.0, value) for value in self.weight_coefficients.values()
++        )
++        if not math.isfinite(self.weight_upper_bound):
++            raise ValueError("Aiming constraint weight bound must be finite")
++        if self.margin is not None and self.margin > 0:
++            self.weight_upper_bound = min(self.weight_upper_bound, _WEIGHT_RECIPROCAL / self.margin)
++
++    def accepts_stats(self, stats):
++        if self.prevent_overswing and stats["overswing"]:
++            return False
++        return (
++            self.min_true_ergo_delta is None or stats["true_ergo_delta"] >= self.min_true_ergo_delta - TED_FLOOR_EPSILON
++        )
++
++    def _point(self, selected):
++        columns = [self.idx[i] for i in selected]
++        ergo = self.ergo_constant + math.fsum(self.ergo_coefficients[column] for column in columns)
++        weight = self.weight_constant + math.fsum(self.weight_coefficients[column] for column in columns)
++        return ergo, weight
++
++    def _add_necessary_rows(self):
++        if self.necessary_added or self.margin is None:
++            return False
++        self.necessary_added = True
++        if self.margin > 100.0:
++            self.cb.ge({}, 1.0)
++        else:
++            # Reuse the existing nonnegative raw-ergo model instead of adding a clamp.
++            self.cb.ge(self.ergo_coefficients, self.margin - self.ergo_constant)
++            if self.margin > 0:
++                self.cb.le(self.weight_coefficients, _WEIGHT_RECIPROCAL / self.margin - self.weight_constant)
++            if self.weight_upper_bound > SWAY_START_KG:
++                slope = 100.0 / self.weight_upper_bound
++                intercept = self.margin - _WEIGHT_RECIPROCAL / self.weight_upper_bound
++                coefficients, rhs, _big_m = self._row(slope, intercept)
++                # Keep the endpoint chord active even while every segment code is relaxed.
++                self.cb.ge(coefficients, rhs)
++        return True
++
++    def _row(self, slope, intercept):
++        coefficients = {
++            column: self.ergo_coefficients[column] - slope * self.weight_coefficients[column]
++            for column in self.idx.values()
++        }
++        constant = self.ergo_constant - slope * self.weight_constant
++        rhs = intercept - constant
++        # Bound each complete row over the binary cube to deactivate its branch safely.
++        minimum = math.fsum(min(0.0, value) for value in coefficients.values())
++        big_m = max(0.0, rhs - minimum)
++        if self.necessary_added and self.margin is not None:
++            # Reuse the necessary ergo floor and finite weight cap to tighten each branch.
++            bounded_m = max(0.0, intercept - self.margin + slope * self.weight_upper_bound)
++            big_m = min(big_m, bounded_m)
++        big_m += 1e-9 * max(1.0, abs(big_m))
++        return coefficients, rhs, big_m
++
++    def _add_grid(self, anchor):
++        lower = 1.0 / math.sqrt(SWAY_START_KG)
++        upper = 1.0 / math.sqrt(self.weight_upper_bound)
++        points = [1.0 / (lower + (upper - lower) * i / _GRID_SEGMENTS) ** 2 for i in range(_GRID_SEGMENTS + 1)]
++        points[0], points[-1] = SWAY_START_KG, self.weight_upper_bound
++        if SWAY_START_KG < anchor < self.weight_upper_bound and all(abs(point - anchor) > 1e-10 for point in points):
++            points.append(anchor)
++            points.sort()
++        self.grid_bits = tuple(self.cb.add_binary() for _ in range((len(points) - 2).bit_length()))
++        for code, (a, b) in enumerate(zip(points, points[1:])):
++            slope = _WEIGHT_RECIPROCAL / (a * b)
++            intercept = self.margin + 100.0 - _WEIGHT_RECIPROCAL / a - _WEIGHT_RECIPROCAL / b
++            coefficients, rhs, big_m = self._row(slope, intercept)
++            for position, bit in enumerate(self.grid_bits):
++                coefficients[bit] = -big_m if code & (1 << position) else big_m
++            self.cb.ge(coefficients, rhs - big_m * code.bit_count())
++            self.grid.append((code, slope, intercept))
++        # Encode the chosen segment in bits and deactivate every other row by Hamming distance.
++        if len(self.grid) < 1 << len(self.grid_bits):
++            self.cb.le({bit: 1 << position for position, bit in enumerate(self.grid_bits)}, len(self.grid) - 1)
++
++    def add_cut(self, selected):
++        if self.margin is None:
++            return False
++        necessary_added = self._add_necessary_rows()
++        ergo, weight = self._point(selected)
++        if self.margin > 100.0 or ergo < self.margin - _CUT_EPSILON:
++            return necessary_added
++        if self.margin > 0 and weight > _WEIGHT_RECIPROCAL / self.margin + _CUT_EPSILON:
++            return necessary_added
++        upper = self.weight_upper_bound
++        if weight <= SWAY_START_KG or upper <= SWAY_START_KG:
++            return False
++        endpoint_ergo = self.margin + 100.0 * (weight - SWAY_START_KG) / upper
++        if necessary_added and ergo < endpoint_ergo - _CUT_EPSILON:
++            return True
++        required_ergo = self.margin + 100.0 - _WEIGHT_RECIPROCAL / weight
++        if ergo >= required_ergo - _CUT_EPSILON:
++            # Fall back to an exact no-good when optimistic rounding already passes.
++            return False
++
++        if not self.grid and self.margin <= 0.0:
++            self._add_grid(weight)
++            if ergo < min(slope * weight + intercept for _code, slope, intercept in self.grid) - _CUT_EPSILON:
++                return True
++
++        anchor = min(weight, upper)
++        if anchor >= upper - 1e-10:
++            anchor = upper
++        left_slope = 100.0 / anchor
++        left_intercept = self.margin - left_slope * SWAY_START_KG
++        if anchor >= upper - 1e-10:
++            if anchor in self.linear_cut_anchors:
++                return False
++            # Use the single endpoint chord when the right segment has no width.
++            coefficients, rhs, _big_m = self._row(left_slope, left_intercept)
++            self.cb.ge(coefficients, rhs)
++            self.linear_cut_anchors.add(anchor)
++            return True
++
++        right_slope = _WEIGHT_RECIPROCAL / (anchor * upper)
++        right_intercept = self.margin + 100.0 - _WEIGHT_RECIPROCAL / anchor - _WEIGHT_RECIPROCAL / upper
++        if anchor in self.cut_anchors:
++            return False
++        binary = self.cb.add_binary()
++        coefficients, rhs, big_m = self._row(left_slope, left_intercept)
++        coefficients[binary] = big_m
++        self.cb.ge(coefficients, rhs)
++        coefficients, rhs, big_m = self._row(right_slope, right_intercept)
++        coefficients[binary] = -big_m
++        self.cb.ge(coefficients, rhs - big_m)
++        # Permit either chord; their minimum stays below the exact concave boundary.
++        self.cuts.append((binary, left_slope, left_intercept, right_slope, right_intercept))
++        self.cut_anchors.add(anchor)
++        return True
++
++    def fill_assignment(self, assignment):
++        ergo = self.ergo_constant + math.fsum(
++            value * assignment[column] for column, value in self.ergo_coefficients.items()
++        )
++        weight = self.weight_constant + math.fsum(
++            value * assignment[column] for column, value in self.weight_coefficients.items()
++        )
++        if self.grid:
++            chosen = min(self.grid, key=lambda segment: segment[1] * weight + segment[2])
++            for position, bit in enumerate(self.grid_bits):
++                assignment[bit] = float(bool(chosen[0] & (1 << position)))
++            if ergo < chosen[1] * weight + chosen[2] - _CUT_EPSILON:
++                return False
++        for binary, left_slope, left_intercept, right_slope, right_intercept in self.cuts:
++            if ergo >= left_slope * weight + left_intercept - _CUT_EPSILON:
++                assignment[binary] = 0.0
++            elif ergo >= right_slope * weight + right_intercept - _CUT_EPSILON:
++                assignment[binary] = 1.0
++            else:
++                return False
++        return True
+diff --git a/backend/tests/test_optimizer_ergo_boundary.py b/backend/tests/test_optimizer_ergo_boundary.py
+--- a/backend/tests/test_optimizer_ergo_boundary.py
++++ b/backend/tests/test_optimizer_ergo_boundary.py
+@@ -58,7 +58,7 @@
+             "optimizer.milp._compute_stats",
+             side_effect=[{"true_ergo_delta": -1}, {"true_ergo_delta": -1}, {"true_ergo_delta": 10}],
+         ),
+-        patch("optimizer.milp._add_overswing_cut_at"),
++        patch("optimizer.milp.TedOuterConstraint.add_cut", return_value=True),
+     ):
+         result = _solve_with_min_true_ergo(
+             np.zeros(2),
+@@ -78,4 +78,4 @@
+         )
+     assert result["status"] == "optimal"
+     assert result["metrics"]["solve_count"] == 3
+-    assert cb.rows == [({0: -1}, 0, np.inf)]
++    assert cb.rows.count(({0: -1}, 0, np.inf)) == 1
+diff --git a/backend/tests/test_optimizer_termination.py b/backend/tests/test_optimizer_termination.py
+--- a/backend/tests/test_optimizer_termination.py
++++ b/backend/tests/test_optimizer_termination.py
+@@ -170,7 +170,7 @@
+     with (
+         patch("optimizer.milp._solve_once", side_effect=[feasible, optimal]) as solve,
+         patch("optimizer.milp._compute_stats", side_effect=[{"overswing": True}, {"overswing": False}]),
+-        patch("optimizer.milp._add_overswing_cut_at"),
++        patch("optimizer.milp.TedOuterConstraint.add_cut", return_value=True),
+     ):
+         result = _solve_avoiding_overswing(
+             np.array([1.0]),
+diff --git a/backend/tests/test_optimizer_ted_outer.py b/backend/tests/test_optimizer_ted_outer.py
+new file mode 100644
+--- /dev/null
++++ b/backend/tests/test_optimizer_ted_outer.py
+@@ -0,0 +1,402 @@
++"""Compare nonlinear TED constraints against exhaustive small build sets."""
++
++import os
++from itertools import product
++from types import SimpleNamespace
++from unittest.mock import patch
++
++import numpy as np
++import pytest
++from sqlalchemy import create_engine
++from sqlalchemy.orm import Session
++
++os.environ.setdefault("IP_HASH_SECRET", "optimizer-ted-outer-test-secret")
++os.environ.setdefault("ADMIN_API_KEY", "optimizer-ted-outer-test-admin")
++
++from database import Base  # noqa: E402
++from models_items import Item  # noqa: E402
++from models_item_offers import ItemOffer  # noqa: E402
++from optimizer import local_price  # noqa: E402
++from optimizer.milp import (  # noqa: E402
++    TCHEBYCHEFF_Z_BOUND,
++    ConstraintBuilder,
++    _SolveStats,
++    _axis_objective_for_explore,
++    _build_constraints,
++    _solve_once,
++    _tchebycheff_model,
++)
++from optimizer.solver import OptimizeParams, _load_candidates_and_prices, optimize_weapon  # noqa: E402
++from optimizer.ted_outer import TedOuterConstraint  # noqa: E402
++from stats import _compute_stats, apply_full_mag_ammo  # noqa: E402
++from tests.test_reachability_integration import setup_graph  # noqa: E402
++
++
++@pytest.fixture
++def db():
++    engine = create_engine("sqlite://")
++    Base.metadata.create_all(engine)
++    with Session(engine) as session:
++        yield session
++    engine.dispose()
++
++
++def setup_choices(db, choices, *, base_ergo=40, base_weight=3, weapon_fields=None, extra_fields=None):
++    fields = {"gun": {"base_ergonomics": base_ergo, "weight": base_weight, **(weapon_fields or {})}}
++    for item_id, ergo, weight, recoil in choices:
++        fields[item_id] = {"ergonomics_modifier": ergo, "weight": weight, "recoil_modifier": recoil}
++    for item_id, values in (extra_fields or {}).items():
++        fields.setdefault(item_id, {}).update(values)
++    setup_graph(db, {("choice", "gun"): [choice[0] for choice in choices]}, required=["choice"], fields=fields)
++
++
++def assert_exhaustive_optimum(db, params, expected_item):
++    weapon, _, mods, (item_ids, prices) = _load_candidates_and_prices(db, "gun", params)
++    idx = {item_id: index for index, item_id in enumerate(item_ids)}
++    objective = _axis_objective_for_explore("recoil", item_ids, idx, mods, prices, len(item_ids))
++    ammo = db.get(Item, params.selected_ammo_id) if params.assume_full_mag and params.selected_ammo_id else None
++    grenade = (
++        db.get(Item, params.selected_ubgl_ammo_id) if params.assume_full_mag and params.selected_ubgl_ammo_id else None
++    )
++    feasible = []
++    for item_id in item_ids:
++        stats = _compute_stats(weapon, [item_id], mods, params.strength_level, params.equip_ergo_modifier)
++        apply_full_mag_ammo(
++            stats, {item_id: mods[item_id]}, ammo, grenade, params.strength_level, params.equip_ergo_modifier
++        )
++        if params.prevent_overswing and stats["overswing"]:
++            continue
++        if params.min_true_ergo_delta is not None and stats["true_ergo_delta"] < params.min_true_ergo_delta - 1e-7:
++            continue
++        feasible.append((objective[idx[item_id]], item_id, stats))
++
++    result = optimize_weapon(db, "gun", params, objective_axis="recoil")
++    if expected_item is None:
++        assert feasible == []
++        assert result["status"] == "infeasible"
++        assert result["selected_items"] == []
++        return result
++
++    expected = min(feasible, key=lambda candidate: candidate[:2])
++    assert expected[1] == expected_item
++    assert result["status"] == "optimal"
++    assert result["selected_items"] == [expected_item]
++    assert result["final_stats"] == expected[2]
++    assert result["total_price_rub"] == prices[expected_item]["price_rub"]
++    return result
++
++
++def tangent_choices(margin, equipment, *, fallback=True):
++    scale = 1 + equipment
++    choices = [("bad_first", 0, 2.1, -0.3), ("valid_better", 30 / scale, 6, -0.2)]
++    if fallback:
++        choices.append(("good_fallback", 0, 1.9, -0.1))
++    return choices, (40 + margin) / scale
++
++
++@pytest.mark.parametrize("margin", [-20, 0, 10, 20])
++@pytest.mark.parametrize("equipment", [-0.2, 0, 0.05])
++def test_ted_floor_preserves_the_true_optimum_after_rejecting_a_distant_build(db, margin, equipment):
++    choices, base_ergo = tangent_choices(margin, equipment)
++    setup_choices(db, choices, base_ergo=base_ergo)
++    params = OptimizeParams(use_tchebycheff=False, min_true_ergo_delta=margin, equip_ergo_modifier=equipment)
++    assert_exhaustive_optimum(db, params, "valid_better")
++
++
++@pytest.mark.parametrize("equipment", [-0.2, 0, 0.05])
++def test_overswing_constraint_preserves_the_true_optimum_after_rejecting_a_distant_build(db, equipment):
++    choices, base_ergo = tangent_choices(0, equipment)
++    setup_choices(db, choices, base_ergo=base_ergo)
++    params = OptimizeParams(use_tchebycheff=False, prevent_overswing=True, equip_ergo_modifier=equipment)
++    assert_exhaustive_optimum(db, params, "valid_better")
++
++
++@pytest.mark.parametrize(
++    "constraint", [{"prevent_overswing": True}, {"min_true_ergo_delta": 0}, {"min_true_ergo_delta": 10}]
++)
++def test_rejected_build_does_not_make_a_valid_build_falsely_infeasible(db, constraint):
++    choices, base_ergo = tangent_choices(constraint.get("min_true_ergo_delta", 0), 0, fallback=False)
++    setup_choices(db, choices, base_ergo=base_ergo)
++    assert_exhaustive_optimum(db, OptimizeParams(use_tchebycheff=False, **constraint), "valid_better")
++
++
++@pytest.mark.parametrize(
++    "constraint,expected",
++    [
++        ({"min_true_ergo_delta": 0}, "rounded_zero"),
++        ({"prevent_overswing": True}, "good_fallback"),
++        ({"min_true_ergo_delta": 0, "prevent_overswing": True}, "good_fallback"),
++    ],
++)
++def test_rounded_zero_ted_floor_and_strict_overswing_keep_their_own_boundaries(db, constraint, expected):
++    setup_choices(
++        db,
++        [("bad_first", 0, 3.1, -0.3), ("rounded_zero", 0, 3.0005, -0.2), ("good_fallback", 0, 2.9, -0.1)],
++        base_ergo=50,
++    )
++    result = assert_exhaustive_optimum(db, OptimizeParams(use_tchebycheff=False, **constraint), expected)
++    if expected == "rounded_zero":
++        assert result["final_stats"]["true_ergo_delta"] == 0
++        assert result["final_stats"]["overswing"] is True
++
++
++def test_positive_ted_floor_accepts_a_build_that_clears_the_floor_after_rounding(db):
++    setup_choices(
++        db,
++        [("bad_first", 0, 2.1, -0.3), ("rounded_floor", 0, 2.0002, -0.2), ("good_fallback", 0, 1.9, -0.1)],
++        base_ergo=50,
++    )
++    result = assert_exhaustive_optimum(
++        db, OptimizeParams(use_tchebycheff=False, min_true_ergo_delta=10), "rounded_floor"
++    )
++    assert result["final_stats"]["true_ergo_delta"] == 10
++
++
++def test_zero_equipment_ergo_scale_rejects_a_positive_floor_without_dividing_by_zero(db):
++    setup_choices(db, [("only", 0, 0.1, -0.3)], base_ergo=60, base_weight=2)
++    assert_exhaustive_optimum(
++        db, OptimizeParams(use_tchebycheff=False, min_true_ergo_delta=10, equip_ergo_modifier=-1), None
++    )
++
++
++@pytest.mark.parametrize("ergo,weight", [(99.5, 400), (100, 1000)])
++@pytest.mark.parametrize("constraint", [{"prevent_overswing": True}, {"min_true_ergo_delta": 0}])
++def test_high_effective_ergo_uses_the_exact_hundred_point_cap(db, ergo, weight, constraint):
++    setup_choices(
++        db,
++        [("bad_first", 0, 2.1, -0.3), ("valid_better", ergo - 40, weight - 3, -0.2), ("good_fallback", 0, 1.9, -0.1)],
++    )
++    assert_exhaustive_optimum(db, OptimizeParams(use_tchebycheff=False, **constraint), "valid_better")
++
++
++def test_hundred_point_ted_floor_preserves_a_build_at_three_kilograms(db):
++    setup_choices(
++        db,
++        [("bad_first", 0, 0.101, -0.3), ("valid_better", 0, 0.1, -0.2), ("good_fallback", 0, 0, -0.1)],
++        base_ergo=100,
++        base_weight=2.9,
++    )
++    assert_exhaustive_optimum(db, OptimizeParams(use_tchebycheff=False, min_true_ergo_delta=100), "valid_better")
++
++
++@pytest.mark.parametrize("constraint", [{"prevent_overswing": True}, {"min_true_ergo_delta": 10}])
++def test_factory_override_stats_can_make_an_affine_rejected_build_the_true_optimum(db, constraint):
++    margin = constraint.get("min_true_ergo_delta", 0)
++    setup_choices(
++        db,
++        [("bad_first", 0, 2.1, -0.3), ("valid_better", 0, 6, -0.2), ("good_fallback", 0, 1.9, -0.1)],
++        base_ergo=40 + margin,
++        weapon_fields={
++            "factory_attachment_ids": "valid_better",
++            "factory_ergonomics": 70 + margin,
++            "factory_weight": 9,
++            "factory_recoil_vertical": 80,
++            "factory_recoil_horizontal": 80,
++        },
++    )
++    assert_exhaustive_optimum(db, OptimizeParams(use_tchebycheff=False, **constraint), "valid_better")
++
++
++@pytest.mark.parametrize("loading", ["magazine", "grenade"])
++@pytest.mark.parametrize("constraint", [{"prevent_overswing": True}, {"min_true_ergo_delta": 10}])
++def test_loaded_ammo_stats_preserve_the_true_optimum_after_rejecting_a_distant_build(db, loading, constraint):
++    margin = constraint.get("min_true_ergo_delta", 0)
++    choices = [("bad_first", 0, 1.9, -0.3), ("valid_better", 30, 5.8, -0.2), ("good_fallback", 0, 1.7, -0.1)]
++    if loading == "magazine":
++        extra_fields = {item_id: {"magazine_capacity": 10} for item_id, *_ in choices}
++        extra_fields["ammo"] = {"is_ammo": True, "weight": 0.02}
++        ammo_params = {"selected_ammo_id": "ammo"}
++    else:
++        extra_fields = {item_id: {"caliber": "Caliber40x46"} for item_id, *_ in choices}
++        extra_fields["ammo"] = {"is_ammo": True, "weight": 0.2, "caliber": "Caliber40x46"}
++        ammo_params = {"selected_ubgl_ammo_id": "ammo"}
++    setup_choices(db, choices, base_ergo=40 + margin, extra_fields=extra_fields)
++    result = assert_exhaustive_optimum(
++        db, OptimizeParams(use_tchebycheff=False, **constraint, **ammo_params), "valid_better"
++    )
++    assert result["final_stats"]["total_weight"] == 9
++
++
++@pytest.mark.parametrize("binary_value,status", [(0, "optimal"), (1, "optimal"), (0.5, "timeout")])
++def test_appended_cut_columns_are_binary_when_validating_native_incumbents(binary_value, status):
++    cb = ConstraintBuilder(2)
++    binary = cb.add_binary()
++    native = SimpleNamespace(
++        status=0 if status == "optimal" else 1, x=np.array([1, 50, binary_value]), message="result"
++    )
++    with patch("optimizer.milp.milp", return_value=native) as solve:
++        result = _solve_once(
++            np.zeros(2), cb, 1, ["mod"], "weapon", {"mod": [("slot", "weapon")]}, {"mod": {"price_rub": 100}}
++        )
++    assert result["status"] == status
++    np.testing.assert_array_equal(solve.call_args.kwargs["integrality"], [1, 0, 1])
++    assert solve.call_args.kwargs["bounds"].ub[binary] == 1
++
++
++def test_tchebycheff_z_keeps_its_own_bound_between_appended_cut_binaries():
++    cb = ConstraintBuilder(2)
++    first_binary = cb.add_binary()
++    ideal = {"ergo": 50, "recoil": -0.5, "price": 0}
++    nadir = {"ergo": 0, "recoil": 0, "price": 100}
++    objective, cb = _tchebycheff_model(
++        cb,
++        1,
++        ["mod"],
++        {"mod": 0},
++        {"mod": SimpleNamespace(recoil_modifier=0)},
++        {"mod": {"price_rub": 100}},
++        ideal,
++        nadir,
++        OptimizeParams(),
++    )
++    z_column = cb.n - 1
++    last_binary = cb.add_binary()
++    vector = np.array([1, 50, 1, 123.5, 0])
++    native = SimpleNamespace(status=0, x=vector, message="optimal")
++    with patch("optimizer.milp.milp", return_value=native) as solve:
++        result = _solve_once(
++            objective,
++            cb,
++            1,
++            ["mod"],
++            "weapon",
++            {"mod": [("slot", "weapon")]},
++            {"mod": {"price_rub": 100}},
++            extra_bounds=(100, TCHEBYCHEFF_Z_BOUND),
++        )
++    assert result["status"] == "optimal"
++    bounds = solve.call_args.kwargs["bounds"]
++    assert bounds.ub[z_column] == TCHEBYCHEFF_Z_BOUND
++    assert bounds.ub[first_binary] == bounds.ub[last_binary] == 1
++    np.testing.assert_array_equal(solve.call_args.kwargs["integrality"], [1, 0, 1, 0, 1])
++
++
++@pytest.mark.parametrize("replacement_weight,expected", [(3.003, "expensive"), (2.9, "cheap")])
++def test_price_cleanup_respects_exact_ted_after_a_cut(db, monkeypatch, replacement_weight, expected):
++    setup_choices(
++        db,
++        [("bad_first", 0, 3.2, -0.1), ("expensive", 0, 2.9, -0.2), ("cheap", 0.01, replacement_weight, -0.2)],
++        base_ergo=60,
++    )
++    db.query(ItemOffer).filter_by(item_id="expensive").update({"price": 10000, "price_rub": 10000})
++    db.commit()
++    params = OptimizeParams(use_tchebycheff=False, min_true_ergo_delta=10)
++    weapon, compat, mods, (ids, prices) = _load_candidates_and_prices(db, "gun", params)
++    solve_stats = _SolveStats(weapon, mods, params)
++    ids, idx, cb, slots, *_ = _build_constraints(weapon, mods, compat, ids, prices, params, solve_stats)
++    constraint = TedOuterConstraint(solve_stats, cb, idx, min_true_ergo_delta=10)
++    assert constraint.add_cut({"bad_first"})
++    assert cb.binary_columns
++    assignment = np.zeros(cb.n)
++    assignment[idx["cheap"]] = 1
++    assignment[len(ids)] = weapon.base_ergonomics + mods["cheap"].ergonomics_modifier
++    assert constraint.fill_assignment(assignment)
++    rows = cb.build()
++    lhs = rows.A @ assignment
++    assert np.all(lhs >= rows.lb - 1e-7)
++    assert np.all(lhs <= rows.ub + 1e-7)
++    assert constraint.accepts_stats(solve_stats.compute(["cheap"])) == (expected == "cheap")
++    source = {"status": "optimal", "selected_items": ["expensive"], "total_price_rub": 10000, "metrics": {}}
++    monkeypatch.setattr(local_price.time, "perf_counter", lambda: 0)
++    result = local_price.improve_price(source, weapon, mods, compat, slots, ids, idx, prices, cb, solve_stats, 1)
++    assert result["selected_items"] == [expected]
++    assert constraint.accepts_stats(solve_stats.compute(result["selected_items"]))
++    assert result["metrics"]["local_price_saved_rub"] == (9900 if expected == "cheap" else 0)
++
++
++def test_price_cleanup_can_fill_a_required_nonzero_cut_binary(db, monkeypatch):
++    setup_choices(db, [("bad_first", 0, 2.1, -0.1), ("expensive", 0, 1.9, -0.2), ("cheap", 30, 6, -0.2)])
++    db.query(ItemOffer).filter_by(item_id="expensive").update({"price": 10000, "price_rub": 10000})
++    db.commit()
++    params = OptimizeParams(use_tchebycheff=False, min_true_ergo_delta=0)
++    weapon, compat, mods, (ids, prices) = _load_candidates_and_prices(db, "gun", params)
++    solve_stats = _SolveStats(weapon, mods, params)
++    ids, idx, cb, slots, *_ = _build_constraints(weapon, mods, compat, ids, prices, params, solve_stats)
++    constraint = TedOuterConstraint(solve_stats, cb, idx, min_true_ergo_delta=0)
++    assert constraint.add_cut({"bad_first"})
++    assignment = np.zeros(cb.n)
++    assignment[idx["cheap"]] = 1
++    assert constraint.fill_assignment(assignment)
++    assert any(assignment[column] == 1 for column in cb.binary_columns)
++    source = {"status": "optimal", "selected_items": ["expensive"], "total_price_rub": 10000, "metrics": {}}
++    monkeypatch.setattr(local_price.time, "perf_counter", lambda: 0)
++    result = local_price.improve_price(source, weapon, mods, compat, slots, ids, idx, prices, cb, solve_stats, 1)
++    assert result["selected_items"] == ["cheap"]
++    assert result["metrics"]["local_price_saved_rub"] == 9900
++    assert constraint.accepts_stats(solve_stats.compute(result["selected_items"]))
++
++
++@pytest.mark.parametrize("equipment", [-0.2, 0.05])
++@pytest.mark.parametrize("factory", [False, True])
++@pytest.mark.parametrize("loaded", [False, True])
++@pytest.mark.parametrize(
++    "constraint_options",
++    [{"min_true_ergo_delta": -20}, {"prevent_overswing": True}, {"min_true_ergo_delta": 10, "prevent_overswing": True}],
++)
++def test_every_valid_binary_selection_survives_all_rejected_selection_cuts(
++    db, equipment, factory, loaded, constraint_options
++):
++    fields = {
++        "gun": {"base_ergonomics": 35.0049, "weight": 3.20049},
++        "factory_a": {"ergonomics_modifier": 10.0051, "weight": 1},
++        "factory_b": {"ergonomics_modifier": 20.0049, "weight": 1},
++        "magazine": {"ergonomics_modifier": -15.0049, "weight": 0.20049, "magazine_capacity": 17},
++        "grenade_launcher": {"ergonomics_modifier": 4.9951, "weight": 0.50049, "caliber": "Caliber40x46"},
++        "heavy": {"ergonomics_modifier": 25.0051, "weight": 7.50049},
++        "ammo": {"is_ammo": True, "weight": 0.01377},
++        "grenade": {"is_ammo": True, "weight": 0.23049, "caliber": "Caliber40x46"},
++    }
++    if factory:
++        fields["gun"].update(
++            factory_attachment_ids="factory_a,factory_b", factory_ergonomics=75.0049, factory_weight=4.79949
++        )
++    choices = [item_id for item_id in fields if item_id not in {"gun", "ammo", "grenade"}]
++    setup_graph(db, {(item_id + "_slot", "gun"): [item_id] for item_id in choices}, fields=fields)
++    params = OptimizeParams(equip_ergo_modifier=equipment, **constraint_options)
++    weapon, compat, mods, (ids, prices) = _load_candidates_and_prices(db, "gun", params)
++    stats = _SolveStats(
++        weapon, mods, params, db.get(Item, "ammo") if loaded else None, db.get(Item, "grenade") if loaded else None
++    )
++    ids, idx, cb, *_ = _build_constraints(weapon, mods, compat, ids, prices, params, stats)
++    constraint = TedOuterConstraint(stats, cb, idx, **constraint_options)
++    valid, invalid = [], []
++    for bits in product([0, 1], repeat=len(ids)):
++        selected = {item_id for item_id, chosen in zip(ids, bits) if chosen}
++        exact = stats.compute(selected)
++        accepted = not params.prevent_overswing or not exact["overswing"]
++        accepted &= params.min_true_ergo_delta is None or exact["true_ergo_delta"] >= params.min_true_ergo_delta - 1e-7
++        (valid if accepted else invalid).append(selected)
++    assert valid and invalid
++    for selected in invalid:
++        if not constraint.add_cut(selected):
++            cb.ge({idx[item_id]: -1 if item_id in selected else 1 for item_id in ids}, 1 - len(selected))
++    rows = cb.build()
++    for selected in valid:
++        assignment = np.zeros(cb.n)
++        assignment[[idx[item_id] for item_id in selected]] = 1
++        assignment[len(ids)] = min(
++            100, weapon.base_ergonomics + sum(mods[item_id].ergonomics_modifier or 0 for item_id in selected)
++        )
++        assert constraint.fill_assignment(assignment), selected
++        lhs = rows.A @ assignment
++        assert np.all(lhs >= rows.lb - 1e-7), selected
++        assert np.all(lhs <= rows.ub + 1e-7), selected
++
++
++@pytest.mark.parametrize("cent_floor", [-12.34, 0, 42.52, 100])
++@pytest.mark.parametrize("floor_offset", [-2e-7, 0, 0.5e-7, 1e-7, 2e-7])
++def test_snapped_model_margin_preserves_every_accepted_exported_cent(cent_floor, floor_offset):
++    floor = cent_floor + floor_offset
++    inputs = SimpleNamespace(
++        weapon=SimpleNamespace(base_ergonomics=0, weight=0), mods={}, item_weights={}, equip_ergo_modifier=0
++    )
++    constraint = TedOuterConstraint(inputs, ConstraintBuilder(1), {}, min_true_ergo_delta=floor)
++    cents = [round(cent_floor + offset / 100, 2) for offset in range(-2, 3)]
++    lowest_accepted_cent = min(value for value in cents if value >= floor - 1e-7)
++    assert constraint.margin == pytest.approx(lowest_accepted_cent - 0.005 - 1e-7, abs=1e-10)
++    for cent in cents:
++        for offset in [-1e-6, -1e-9, 0, 1e-9, 1e-6]:
++            raw_ted = cent - 0.005 + offset
++            exported = {"true_ergo_delta": round(raw_ted, 2)}
++            if constraint.accepts_stats(exported):
++                assert raw_ted >= constraint.margin - 1e-12

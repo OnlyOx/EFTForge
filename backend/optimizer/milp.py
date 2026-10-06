@@ -5,13 +5,14 @@ Solved with scipy.optimize.milp (HiGHS backend) - the same solver engine the
 original optimizer's WASM frontend already uses.
 """
 
+import threading
 import time
 from collections import deque
 from types import SimpleNamespace
 
 import numpy as np
 from scipy.optimize import milp, LinearConstraint, Bounds, linear_sum_assignment
-from scipy.sparse import csc_array
+from scipy.sparse import csr_array
 
 from optimizer.local_price import improve_price
 from optimizer.matching_placement import MatchingPlacementModel
@@ -171,8 +172,8 @@ class ConstraintBuilder:
         self._compiled = None
         self._compiled_row_count = 0
         self._compiled_column_count = 0
-        # Rows are only ever appended, so keep their triplets and only compile new ones.
-        self._triplets = ([], [], [], [], [])
+        # Keep compressed row pointers so we only append one index per row.
+        self._triplets = ([], [], [0], [], [])
         self._triplet_row_count = 0
 
     def le(self, coeffs: dict, rhs):
@@ -189,18 +190,18 @@ class ConstraintBuilder:
             return None
         if self._compiled_row_count == len(self.rows) and self._compiled_column_count == self.n:
             return self._compiled
-        row_indices, col_indices, values, lb, ub = self._triplets
+        col_indices, values, row_pointers, lb, ub = self._triplets
         for row_i in range(self._triplet_row_count, len(self.rows)):
             coeffs, l, u = self.rows[row_i]
             for col_i, val in coeffs.items():
                 if val:
-                    row_indices.append(row_i)
                     col_indices.append(col_i)
                     values.append(val)
+            row_pointers.append(len(col_indices))
             lb.append(l)
             ub.append(u)
         self._triplet_row_count = len(self.rows)
-        A = csc_array((values, (row_indices, col_indices)), shape=(len(self.rows), self.n), dtype=float)
+        A = csr_array((values, col_indices, row_pointers), shape=(len(self.rows), self.n), dtype=float).tocsc()
         self._compiled = LinearConstraint(A, np.array(lb, dtype=float), np.array(ub, dtype=float))
         self._compiled_column_count = self.n
         self._compiled_row_count = len(self.rows)
@@ -266,6 +267,26 @@ def _item_to_valid_slots(compat_map, candidate_set):
             if item_id in candidate_set:
                 out.setdefault(item_id, []).append((slot_id, owner))
     return out
+
+
+class ModelInputCache:
+    """Reuse the read-only placement graph inside one prepared request."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._key = None
+        self._inputs = None
+
+    def get(self, weapon, mods, compat_map, item_ids):
+        key = (id(weapon), id(mods), id(compat_map), tuple(item_ids))
+        with self._lock:
+            if key != self._key:
+                idx = {item_id: i for i, item_id in enumerate(item_ids)}
+                item_to_valid_slots = _item_to_valid_slots(compat_map, set(item_ids))
+                placement = MatchingPlacementModel(weapon, mods, compat_map, item_ids, idx)
+                self._inputs = idx, item_to_valid_slots, placement
+                self._key = key
+            return self._inputs
 
 
 def _lp_stat_range(cb, n, coeffs):
@@ -379,6 +400,7 @@ def _build_constraints(
     solve_stats=None,
     *,
     placement_cut_cache=None,
+    model_cache=None,
 ):
     """Builds every item_id/idx/constraint/item_to_valid_slots the solve needs,
     independent of the objective - so the TrueErgo sweep can re-solve the same
@@ -388,7 +410,6 @@ def _build_constraints(
     requirement).
     """
     item_ids = list(candidate_ids)
-    idx = {item_id: i for i, item_id in enumerate(item_ids)}
     n = len(item_ids)
 
     if n == 0:
@@ -397,15 +418,19 @@ def _build_constraints(
             key="optimizer.reason.noAttachmentsAvailable",
         )
 
-    candidate_set = set(item_ids)
-    item_to_valid_slots = _item_to_valid_slots(compat_map, candidate_set)
+    if model_cache is None:
+        idx = {item_id: i for i, item_id in enumerate(item_ids)}
+        item_to_valid_slots = _item_to_valid_slots(compat_map, set(item_ids))
+        placement = MatchingPlacementModel(weapon, mods, compat_map, item_ids, idx, placement_cut_cache)
+    else:
+        idx, item_to_valid_slots, template = model_cache.get(weapon, mods, compat_map, item_ids)
+        placement = template.for_solve(placement_cut_cache)
 
     # One extra continuous column (index n, after every item's binary x_i) for
     # capped_ergo - mirrors the reference optimizer's capped_ergo (lpBuilder.ts).
     ergo_idx = n
     cb = ConstraintBuilder(n + 1)
 
-    placement = MatchingPlacementModel(weapon, mods, compat_map, item_ids, idx, placement_cut_cache)
     for slot_id, (owner, required, allowed) in placement.slots.items():
         if owner == weapon.id and required and not allowed:
             slot = compat_map.slots_by_id[slot_id]
@@ -1345,6 +1370,7 @@ def build_and_solve(
     local_price_cleanup=False,
     local_price_cache=None,
     placement_cut_cache=None,
+    model_cache=None,
 ):
     model_start = time.perf_counter()
     deadline = (
@@ -1363,6 +1389,7 @@ def build_and_solve(
             params,
             solve_stats,
             placement_cut_cache=placement_cut_cache,
+            model_cache=model_cache,
         )
     except _Infeasible as exc:
         return {

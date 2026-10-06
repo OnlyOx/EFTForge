@@ -1,6 +1,7 @@
 """Project slot placement onto selection variables and refine with Hall inequalities."""
 
 from collections import defaultdict, deque
+import copy
 
 from scipy.sparse import csr_array
 from scipy.sparse.csgraph import maximum_bipartite_matching
@@ -31,6 +32,14 @@ class MatchingPlacementModel(PlacementModel):
         self.shared_cuts = cut_cache.setdefault(signature, {}) if cut_cache is not None else None
         self.shared_cut_count = 0
         self._blocker_sets = {slot: frozenset(items) for slot, items in self.blockers.items() if items}
+
+    def for_solve(self, cut_cache=None):
+        # Share the read-only graph, but bind each solve to its own learned cuts.
+        placement = copy.copy(self)
+        placement.expressions = {}
+        placement.shared_cuts = cut_cache.setdefault(self.signature, {}) if cut_cache is not None else None
+        placement.shared_cut_count = 0
+        return placement
 
     def _eligible(self, slot, item, selected_blockers):
         # Most slots have no blockers at all, so skip the set math for them.

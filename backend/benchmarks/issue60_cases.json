@@ -1,0 +1,86 @@
+[
+  {
+    "id": "m4_ordinary_10",
+    "weapon": "5447a9cd4bdc2dbd208b4567",
+    "steps": 10,
+    "tradeoff": "price",
+    "params": {
+      "selected_ammo_id": "54527a984bdc2d4e668b4567",
+      "assume_full_mag": true,
+      "min_mag_capacity": 60,
+      "game_mode": "pvp",
+      "use_tchebycheff": false
+    }
+  },
+  {
+    "id": "m4_overswing_10",
+    "weapon": "5447a9cd4bdc2dbd208b4567",
+    "steps": 10,
+    "tradeoff": "price",
+    "params": {
+      "selected_ammo_id": "54527a984bdc2d4e668b4567",
+      "assume_full_mag": true,
+      "min_mag_capacity": 60,
+      "game_mode": "pvp",
+      "use_tchebycheff": false,
+      "prevent_overswing": true
+    }
+  },
+  {
+    "id": "m4_true_ergo_overswing_10",
+    "weapon": "5447a9cd4bdc2dbd208b4567",
+    "steps": 10,
+    "tradeoff": "price",
+    "params": {
+      "selected_ammo_id": "54527a984bdc2d4e668b4567",
+      "assume_full_mag": true,
+      "min_mag_capacity": 60,
+      "game_mode": "pvp",
+      "use_tchebycheff": false,
+      "prevent_overswing": true,
+      "use_true_ergo": true
+    }
+  },
+  {
+    "id": "ak101_overswing_20",
+    "weapon": "5ac66cb05acfc40198510a10",
+    "steps": 20,
+    "tradeoff": "price",
+    "params": {
+      "selected_ammo_id": "59e6906286f7746c9f75e847",
+      "assume_full_mag": true,
+      "game_mode": "pvp",
+      "use_tchebycheff": false,
+      "prevent_overswing": true
+    }
+  },
+  {
+    "id": "m4_overswing_81",
+    "weapon": "5447a9cd4bdc2dbd208b4567",
+    "steps": 81,
+    "tradeoff": "price",
+    "params": {
+      "selected_ammo_id": "54527a984bdc2d4e668b4567",
+      "assume_full_mag": true,
+      "min_mag_capacity": 60,
+      "game_mode": "pvp",
+      "use_tchebycheff": false,
+      "prevent_overswing": true
+    }
+  },
+  {
+    "id": "m4_true_ergo_overswing_81",
+    "weapon": "5447a9cd4bdc2dbd208b4567",
+    "steps": 81,
+    "tradeoff": "price",
+    "params": {
+      "selected_ammo_id": "54527a984bdc2d4e668b4567",
+      "assume_full_mag": true,
+      "min_mag_capacity": 60,
+      "game_mode": "pvp",
+      "use_tchebycheff": false,
+      "prevent_overswing": true,
+      "use_true_ergo": true
+    }
+  }
+]

@@ -154,7 +154,10 @@ def worker(args):
                     "optimizer/explore.py",
                     "optimizer/solver.py",
                     "optimizer/milp.py",
+                    "optimizer/matching_placement.py",
+                    "optimizer/placement.py",
                     "optimizer/local_price.py",
+                    "optimizer/ted_outer.py",
                     "stats.py",
                 )
                 if (args.backend / name).is_file()
@@ -269,10 +272,11 @@ def worker(args):
                     # Report the true score used to select between TrueErgo
                     # anchors, separately from each tangent's MILP dual bound.
                     out["objective_kind"] = "true_ergo_selection_score"
+                    legacy_ergo_scale = getattr(milp, "_true_ergo_scale", None)
                     out["minimization_objective"] = (
                         -max(call_params.ergo_weight, milp.WEIGHT_FLOOR)
                         * milp.ERGO_OBJ_COEFF
-                        * milp._true_ergo_scale(weapon)
+                        * (legacy_ergo_scale(weapon) if legacy_ergo_scale is not None else 1.0)
                         * out["final_stats"]["true_ergo_delta"]
                         + max(call_params.recoil_weight, milp.WEIGHT_FLOOR)
                         * milp.RECOIL_OBJ_COEFF

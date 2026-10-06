@@ -1,0 +1,758 @@
+{
+  "date": "2026-10-06",
+  "baseline_revision": "a605462cdb5b867634b3b1b042f63ca05cf1c68b",
+  "timing_scope": "direct Explore streaming, excluding imports, GC and post-run auditing",
+  "sequential": {
+    "database_sha256": "b26887567322e6ba260b7828cd23fe8e6cdb809b73f2e7fd0b9dddb643523ca9",
+    "runtime": {
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "sqlalchemy": "2.0.52"
+    },
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_count": 16,
+    "thread_env": {
+      "PYTHONHASHSEED": "0",
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    },
+    "explore_workers": 1,
+    "production_budget_seconds": 30,
+    "baseline_source_hashes": {
+      "optimizer/explore.py": "ff7fe596ce424205e99397e3123a8b0caf7919acd88cf517077283af97520abb",
+      "optimizer/solver.py": "67dced7a008ed02c801583befe65ab0c5c2e2990445ccfb53a994dcb231c2182",
+      "optimizer/milp.py": "8c1ad550ab65025e98096193e646ca2accdd50ec7e5a6106b083bd39995415a8",
+      "optimizer/local_price.py": "29bdc69e6ba0eb90db4f24b84f34a267c6ea62cd793e530d0bae8877ec7ca17c",
+      "stats.py": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "optimizer/matching_placement.py": "8c5fffe6f1f330ddc63494f9660618a8505b4d79f8494ae222e46ff74148ff21",
+      "optimizer/placement.py": "e3fde5fdafba8d35740230ca7f41a85861b4ba78511fda8d339250552dd06649"
+    },
+    "candidate_source_hashes": {
+      "optimizer/explore.py": "ff7fe596ce424205e99397e3123a8b0caf7919acd88cf517077283af97520abb",
+      "optimizer/solver.py": "e815852f765d960d2ae19479dc5b876ce4cc46088c34c45bf8fbb2267c1ad17b",
+      "optimizer/milp.py": "c1ebe93f57cadbcd5c4e0c140f6964a19d44ba02497234e106ef7bdec23b78ef",
+      "optimizer/local_price.py": "29bdc69e6ba0eb90db4f24b84f34a267c6ea62cd793e530d0bae8877ec7ca17c",
+      "stats.py": "58b9ee93cfca38c60d05e9cd40ea560c0899b87cd4732ac457f7bf5a959d7c5f",
+      "optimizer/matching_placement.py": "95e78a3bcba37646dc90096db0472069e4e75aee642f8020bd27441cfe161883",
+      "optimizer/placement.py": "e3fde5fdafba8d35740230ca7f41a85861b4ba78511fda8d339250552dd06649"
+    },
+    "samples_sha256": "8b1a912983aa1885f2a747c73e2428c95bd35658d27dd4c368db73ce5752d75c",
+    "paired_requests": 32,
+    "semantic_mismatches": [],
+    "invalid_build_checks": 0,
+    "measured_requests": 48,
+    "complete_requests": 48,
+    "cases": {
+      "m4_10": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 2586.586,
+          "model_build_ms": 49.617,
+          "matrix_build_ms": 48.503,
+          "setup_ms": 98.12,
+          "native_milp_calls": 16
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 2496.885,
+          "model_build_ms": 14.598,
+          "matrix_build_ms": 28.979,
+          "setup_ms": 43.577,
+          "native_milp_calls": 16
+        },
+        "processing_reduction_percent": 3.4679303143216433,
+        "setup_reduction_percent": 55.58805544231553
+      },
+      "hk416_81": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 4564.61,
+          "model_build_ms": 100.849,
+          "matrix_build_ms": 84.089,
+          "setup_ms": 184.938,
+          "native_milp_calls": 61
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 4498.077,
+          "model_build_ms": 30.125,
+          "matrix_build_ms": 54.22,
+          "setup_ms": 84.345,
+          "native_milp_calls": 61
+        },
+        "processing_reduction_percent": 1.4575834518173347,
+        "setup_reduction_percent": 54.392823540862345
+      },
+      "ak101_overswing_20": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 5787.495,
+          "model_build_ms": 67.163,
+          "matrix_build_ms": 97.628,
+          "setup_ms": 164.791,
+          "native_milp_calls": 44
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 5696.947,
+          "model_build_ms": 19.153,
+          "matrix_build_ms": 59.319,
+          "setup_ms": 78.47200000000001,
+          "native_milp_calls": 44
+        },
+        "processing_reduction_percent": 1.5645456281171644,
+        "setup_reduction_percent": 52.380894587689866
+      },
+      "m4_eed_strength51_equip20_10": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 14375.512,
+          "model_build_ms": 37.278999999999996,
+          "matrix_build_ms": 175.695,
+          "setup_ms": 212.974,
+          "native_milp_calls": 80
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 14202.529,
+          "model_build_ms": 11.589,
+          "matrix_build_ms": 91.828,
+          "setup_ms": 103.417,
+          "native_milp_calls": 80
+        },
+        "processing_reduction_percent": 1.2033171409825294,
+        "setup_reduction_percent": 51.44149051057876
+      },
+      "sr25_price_vs_ergo_20": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 398.428,
+          "model_build_ms": 26.22,
+          "matrix_build_ms": 24.688,
+          "setup_ms": 51.25,
+          "native_milp_calls": 19
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 378.016,
+          "model_build_ms": 8.109,
+          "matrix_build_ms": 15.645,
+          "setup_ms": 23.753999999999998,
+          "native_milp_calls": 19
+        },
+        "processing_reduction_percent": 5.123133916291023,
+        "setup_reduction_percent": 53.65073170731708
+      },
+      "sa58_price_vs_recoil_20": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 462.22,
+          "model_build_ms": 25.996,
+          "matrix_build_ms": 24.187,
+          "setup_ms": 50.183,
+          "native_milp_calls": 21
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 457.856,
+          "model_build_ms": 9.875,
+          "matrix_build_ms": 15.312,
+          "setup_ms": 25.186999999999998,
+          "native_milp_calls": 21
+        },
+        "processing_reduction_percent": 0.9441391545151778,
+        "setup_reduction_percent": 49.809696510770586
+      },
+      "ppsh_20": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 6.826,
+          "model_build_ms": 0.132,
+          "matrix_build_ms": 0.372,
+          "setup_ms": 0.507,
+          "native_milp_calls": 3
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 7.216,
+          "model_build_ms": 0.134,
+          "matrix_build_ms": 0.311,
+          "setup_ms": 0.447,
+          "native_milp_calls": 3
+        },
+        "processing_reduction_percent": -5.713448578962788,
+        "setup_reduction_percent": 11.834319526627224
+      },
+      "sr25_moa12_sight1000_20": {
+        "baseline": {
+          "runs": 3,
+          "processing_ms": 1045.12,
+          "model_build_ms": 46.402,
+          "matrix_build_ms": 32.119,
+          "setup_ms": 78.521,
+          "native_milp_calls": 24
+        },
+        "candidate": {
+          "runs": 3,
+          "processing_ms": 1002.704,
+          "model_build_ms": 16.392,
+          "matrix_build_ms": 19.274,
+          "setup_ms": 35.666,
+          "native_milp_calls": 24
+        },
+        "processing_reduction_percent": 4.0584813227189205,
+        "setup_reduction_percent": 54.57775626902357
+      }
+    },
+    "processing_ms_aggregate_reduction_percent": 1.66479754863319,
+    "setup_ms_aggregate_reduction_percent": 53.06400692275142
+  },
+  "parallel": {
+    "workers": 8,
+    "paired_requests": 24,
+    "semantic_mismatches": 0,
+    "complete_requests": 48,
+    "requests": 48,
+    "cases": {
+      "m4_10": {
+        "baseline": 1108.5885499996948,
+        "candidate": 1037.117700005183,
+        "wall_ms_reduction_percent": 6.447013185778571
+      },
+      "hk416_81": {
+        "baseline": 1788.9543499986758,
+        "candidate": 1602.9898999986472,
+        "wall_ms_reduction_percent": 10.395147869489584
+      },
+      "ak101_overswing_20": {
+        "baseline": 1265.3975499997614,
+        "candidate": 1218.2702499994775,
+        "wall_ms_reduction_percent": 3.7243078272352292
+      },
+      "m4_eed_strength51_equip20_10": {
+        "baseline": 4984.602950004046,
+        "candidate": 5002.294700003404,
+        "wall_ms_reduction_percent": -0.3549279687230289
+      },
+      "sr25_price_vs_ergo_20": {
+        "baseline": 223.93330000340939,
+        "candidate": 175.18125000060536,
+        "wall_ms_reduction_percent": 21.770790678323316
+      },
+      "sa58_price_vs_recoil_20": {
+        "baseline": 167.59839999576798,
+        "candidate": 147.88455000234535,
+        "wall_ms_reduction_percent": 11.76255262217325
+      },
+      "ppsh_20": {
+        "baseline": 7.1384500042768195,
+        "candidate": 6.654299999354407,
+        "wall_ms_reduction_percent": 6.78228473453405
+      },
+      "sr25_moa12_sight1000_20": {
+        "baseline": 523.2966999974451,
+        "candidate": 449.5830500018201,
+        "wall_ms_reduction_percent": 14.086396875039519
+      }
+    },
+    "samples": [
+      {
+        "case_id": "m4_10",
+        "wall_ms": 1110.4646999883698,
+        "sha256": "c55ad5505cb2dcbcdf25efa2f8ffb69260d87d37a15f3375e6e58f696c3a1ad4",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "m4_10",
+        "wall_ms": 1044.121399987489,
+        "sha256": "c55ad5505cb2dcbcdf25efa2f8ffb69260d87d37a15f3375e6e58f696c3a1ad4",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "hk416_81",
+        "wall_ms": 1576.8913999927463,
+        "sha256": "0451eea221c2b30ac5bbee1f61e97bb88c5ee817fa0f045c2c71b79b6b5ca599",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "hk416_81",
+        "wall_ms": 1711.7062000033911,
+        "sha256": "0451eea221c2b30ac5bbee1f61e97bb88c5ee817fa0f045c2c71b79b6b5ca599",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "ak101_overswing_20",
+        "wall_ms": 1212.0976000005612,
+        "sha256": "9e64f7310f06ff678117ce49a1e859f1ea4c3bdc6bd5c89e2bc36287fe86ab0f",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "ak101_overswing_20",
+        "wall_ms": 1138.83490000444,
+        "sha256": "9e64f7310f06ff678117ce49a1e859f1ea4c3bdc6bd5c89e2bc36287fe86ab0f",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "m4_eed_strength51_equip20_10",
+        "wall_ms": 4707.984399996349,
+        "sha256": "781dc366c84a1fc4528369e9192dbe110261dd0ffc5abe86d707cf5352aac7f1",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "m4_eed_strength51_equip20_10",
+        "wall_ms": 4711.887999990722,
+        "sha256": "781dc366c84a1fc4528369e9192dbe110261dd0ffc5abe86d707cf5352aac7f1",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "sr25_price_vs_ergo_20",
+        "wall_ms": 194.4328000099631,
+        "sha256": "b99e10c950de768e96ec0b00d30dfe0daaf920c79fd5df6dc6ac68de0e84cec4",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "sr25_price_vs_ergo_20",
+        "wall_ms": 159.8954000073718,
+        "sha256": "b99e10c950de768e96ec0b00d30dfe0daaf920c79fd5df6dc6ac68de0e84cec4",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "sa58_price_vs_recoil_20",
+        "wall_ms": 131.95570000971202,
+        "sha256": "a90cc251910e66127b35e965d10a5065b3a02f20c61d9ffd2ef48c878dadd950",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "sa58_price_vs_recoil_20",
+        "wall_ms": 168.22490000049584,
+        "sha256": "a90cc251910e66127b35e965d10a5065b3a02f20c61d9ffd2ef48c878dadd950",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "ppsh_20",
+        "wall_ms": 7.569099994725548,
+        "sha256": "45a09eca4ad63b2f5e9bbc0ee8072c41a7d4da9dae77f175c6446e364ffed72b",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "ppsh_20",
+        "wall_ms": 7.936499998322688,
+        "sha256": "45a09eca4ad63b2f5e9bbc0ee8072c41a7d4da9dae77f175c6446e364ffed72b",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "sr25_moa12_sight1000_20",
+        "wall_ms": 407.8284999995958,
+        "sha256": "b6bbb39be2b2d87663f0885d004acab73e731acd6d684db038e0977b394483d9",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "sr25_moa12_sight1000_20",
+        "wall_ms": 438.12310000066645,
+        "sha256": "b6bbb39be2b2d87663f0885d004acab73e731acd6d684db038e0977b394483d9",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 0,
+        "phase": "warmup"
+      },
+      {
+        "case_id": "m4_10",
+        "wall_ms": 1031.5208000101848,
+        "sha256": "c55ad5505cb2dcbcdf25efa2f8ffb69260d87d37a15f3375e6e58f696c3a1ad4",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_10",
+        "wall_ms": 1072.0315999933518,
+        "sha256": "c55ad5505cb2dcbcdf25efa2f8ffb69260d87d37a15f3375e6e58f696c3a1ad4",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "hk416_81",
+        "wall_ms": 1691.2735999940196,
+        "sha256": "0451eea221c2b30ac5bbee1f61e97bb88c5ee817fa0f045c2c71b79b6b5ca599",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "hk416_81",
+        "wall_ms": 1563.405499997316,
+        "sha256": "0451eea221c2b30ac5bbee1f61e97bb88c5ee817fa0f045c2c71b79b6b5ca599",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ak101_overswing_20",
+        "wall_ms": 1155.1951000001281,
+        "sha256": "9e64f7310f06ff678117ce49a1e859f1ea4c3bdc6bd5c89e2bc36287fe86ab0f",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ak101_overswing_20",
+        "wall_ms": 1204.9116999987746,
+        "sha256": "9e64f7310f06ff678117ce49a1e859f1ea4c3bdc6bd5c89e2bc36287fe86ab0f",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_eed_strength51_equip20_10",
+        "wall_ms": 4783.476000011433,
+        "sha256": "781dc366c84a1fc4528369e9192dbe110261dd0ffc5abe86d707cf5352aac7f1",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_eed_strength51_equip20_10",
+        "wall_ms": 4719.658600006369,
+        "sha256": "781dc366c84a1fc4528369e9192dbe110261dd0ffc5abe86d707cf5352aac7f1",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_price_vs_ergo_20",
+        "wall_ms": 163.5593999963021,
+        "sha256": "b99e10c950de768e96ec0b00d30dfe0daaf920c79fd5df6dc6ac68de0e84cec4",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_price_vs_ergo_20",
+        "wall_ms": 201.64440000371542,
+        "sha256": "b99e10c950de768e96ec0b00d30dfe0daaf920c79fd5df6dc6ac68de0e84cec4",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sa58_price_vs_recoil_20",
+        "wall_ms": 153.41600000101607,
+        "sha256": "a90cc251910e66127b35e965d10a5065b3a02f20c61d9ffd2ef48c878dadd950",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sa58_price_vs_recoil_20",
+        "wall_ms": 136.76829999894835,
+        "sha256": "a90cc251910e66127b35e965d10a5065b3a02f20c61d9ffd2ef48c878dadd950",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ppsh_20",
+        "wall_ms": 6.1738999938825145,
+        "sha256": "45a09eca4ad63b2f5e9bbc0ee8072c41a7d4da9dae77f175c6446e364ffed72b",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ppsh_20",
+        "wall_ms": 6.328300005407073,
+        "sha256": "45a09eca4ad63b2f5e9bbc0ee8072c41a7d4da9dae77f175c6446e364ffed72b",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_moa12_sight1000_20",
+        "wall_ms": 445.2296999952523,
+        "sha256": "b6bbb39be2b2d87663f0885d004acab73e731acd6d684db038e0977b394483d9",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_moa12_sight1000_20",
+        "wall_ms": 411.21340000245254,
+        "sha256": "b6bbb39be2b2d87663f0885d004acab73e731acd6d684db038e0977b394483d9",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 1,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_10",
+        "wall_ms": 1145.1455000060378,
+        "sha256": "c55ad5505cb2dcbcdf25efa2f8ffb69260d87d37a15f3375e6e58f696c3a1ad4",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_10",
+        "wall_ms": 1042.7146000001812,
+        "sha256": "c55ad5505cb2dcbcdf25efa2f8ffb69260d87d37a15f3375e6e58f696c3a1ad4",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "hk416_81",
+        "wall_ms": 1642.5742999999784,
+        "sha256": "0451eea221c2b30ac5bbee1f61e97bb88c5ee817fa0f045c2c71b79b6b5ca599",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "hk416_81",
+        "wall_ms": 1886.635100003332,
+        "sha256": "0451eea221c2b30ac5bbee1f61e97bb88c5ee817fa0f045c2c71b79b6b5ca599",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ak101_overswing_20",
+        "wall_ms": 1325.8834000007482,
+        "sha256": "9e64f7310f06ff678117ce49a1e859f1ea4c3bdc6bd5c89e2bc36287fe86ab0f",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ak101_overswing_20",
+        "wall_ms": 1281.345399998827,
+        "sha256": "9e64f7310f06ff678117ce49a1e859f1ea4c3bdc6bd5c89e2bc36287fe86ab0f",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_eed_strength51_equip20_10",
+        "wall_ms": 5284.9308000004385,
+        "sha256": "781dc366c84a1fc4528369e9192dbe110261dd0ffc5abe86d707cf5352aac7f1",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "m4_eed_strength51_equip20_10",
+        "wall_ms": 5185.729899996659,
+        "sha256": "781dc366c84a1fc4528369e9192dbe110261dd0ffc5abe86d707cf5352aac7f1",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_price_vs_ergo_20",
+        "wall_ms": 246.22220000310335,
+        "sha256": "b99e10c950de768e96ec0b00d30dfe0daaf920c79fd5df6dc6ac68de0e84cec4",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_price_vs_ergo_20",
+        "wall_ms": 186.80310000490863,
+        "sha256": "b99e10c950de768e96ec0b00d30dfe0daaf920c79fd5df6dc6ac68de0e84cec4",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sa58_price_vs_recoil_20",
+        "wall_ms": 159.00080000574235,
+        "sha256": "a90cc251910e66127b35e965d10a5065b3a02f20c61d9ffd2ef48c878dadd950",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sa58_price_vs_recoil_20",
+        "wall_ms": 181.78079999051988,
+        "sha256": "a90cc251910e66127b35e965d10a5065b3a02f20c61d9ffd2ef48c878dadd950",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ppsh_20",
+        "wall_ms": 7.9486000031465665,
+        "sha256": "45a09eca4ad63b2f5e9bbc0ee8072c41a7d4da9dae77f175c6446e364ffed72b",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "ppsh_20",
+        "wall_ms": 7.1347000048263,
+        "sha256": "45a09eca4ad63b2f5e9bbc0ee8072c41a7d4da9dae77f175c6446e364ffed72b",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_moa12_sight1000_20",
+        "wall_ms": 487.9527000011876,
+        "sha256": "b6bbb39be2b2d87663f0885d004acab73e731acd6d684db038e0977b394483d9",
+        "complete": true,
+        "workers": 8,
+        "revision": "candidate",
+        "round": 2,
+        "phase": "measured"
+      },
+      {
+        "case_id": "sr25_moa12_sight1000_20",
+        "wall_ms": 601.3636999996379,
+        "sha256": "b6bbb39be2b2d87663f0885d004acab73e731acd6d684db038e0977b394483d9",
+        "complete": true,
+        "workers": 8,
+        "revision": "baseline",
+        "round": 2,
+        "phase": "measured"
+      }
+    ],
+    "measured_runs_per_revision": 2,
+    "warmup_pairs_per_case": 1,
+    "wall_ms_aggregate_reduction_percent": 4.2656945504584876
+  },
+  "full_model_audit": {
+    "rows": 48,
+    "selections": 990,
+    "hard_failures": 0,
+    "placement_issues": 0,
+    "stat_order_differences": 18
+  },
+  "test_results": {
+    "full_suite_passed": 334,
+    "full_suite_skipped": 3,
+    "additional_model_input_tests_passed": 5
+  }
+}

@@ -30,7 +30,7 @@ from compatibility import CompatibilityIndex
 from optimizer.compat_map import build_compatibility_map
 from optimizer.pricing import get_best_price, offers_by_item
 from optimizer.feasibility import check_feasibility
-from optimizer.milp import build_and_solve, compute_stat_ranges as _milp_stat_ranges
+from optimizer.milp import ModelInputCache, build_and_solve, compute_stat_ranges as _milp_stat_ranges
 
 
 @dataclass
@@ -169,6 +169,7 @@ class PreparedOptimizeContext:
     local_price_cache: dict = field(default_factory=dict)
     # Reuse only graph-valid placement cuts within this request's candidate inputs.
     placement_cut_cache: dict = field(default_factory=dict)
+    model_cache: ModelInputCache = field(default_factory=ModelInputCache)
 
     @property
     def weapon(self):
@@ -455,6 +456,8 @@ def optimize_weapon(
 
     ammo, ubgl_grenade = _load_ammo(db, params, prepared)
     solve_options = {}
+    if prepared is not None:
+        solve_options["model_cache"] = prepared.model_cache
     if prepared is not None and objective_axis == "recoil" and params.min_true_ergo_delta is not None:
         # Reuse repeated TED-floor placement cuts without changing plain price cleanup.
         solve_options["placement_cut_cache"] = prepared.placement_cut_cache.setdefault(objective_axis, {})
