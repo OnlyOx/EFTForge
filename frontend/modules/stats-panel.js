@@ -17,16 +17,29 @@ function _collectInstalledItemsFlat(node, result = []) {
     return result;
 }
 
-function _saveFleaCache() {
+// Only a full refetch stamps the timestamp: topping up missing ids or filling another
+// mode later must not make hour-old prices look fresh.
+function _saveFleaCache(stampFetched = false) {
     try {
-        const ts = new Date().toISOString();
         localStorage.setItem("eftforge_flea_pvp",       JSON.stringify(EFTForge.state.fleaCachePvp));
         localStorage.setItem("eftforge_flea_pve",       JSON.stringify(EFTForge.state.fleaCachePve));
         localStorage.setItem("eftforge_flea_pvpseason", JSON.stringify(EFTForge.state.fleaCacheSeasonal));
-        localStorage.setItem("eftforge_flea_ts",  ts);
-        EFTForge.state.fleaLastFetched = ts;
+        if (stampFetched) {
+            const ts = new Date().toISOString();
+            localStorage.setItem("eftforge_flea_ts", ts);
+            EFTForge.state.fleaLastFetched = ts;
+        }
     } catch (_) {}
 }
+
+function _fleaCacheFor(mode) {
+    return mode === "pve" ? EFTForge.state.fleaCachePve
+        : mode === "pvpSeason" ? EFTForge.state.fleaCacheSeasonal
+        : EFTForge.state.fleaCachePvp;
+}
+
+// Price mode -> tarkov.dev JSON API game mode path.
+const _FLEA_API_MODE = { pvp: "regular", pve: "pve", pvpSeason: "pvp-season" };
 
 function restoreFleaCache() {
     try {
@@ -192,13 +205,12 @@ async function refetchFleaPrices() {
 
     try {
         const { t: _t } = EFTForge.lang;
-        const ids = await fetch(`${EFTForge.config.API_BASE}/items/ids`).then(r => r.json());
+        const ids = await EFTForge.api.catalogFetch("/items/ids").then(r => r.json());
         replaceToast("flea-fetch", _t("stats.fleaMarket"), `${_t("stats.fleaFetching")} ${ids.length} ${_t("stats.fleaFetchingItems")}`, 4000, "#f5a623");
-        const CHUNK = 300;
-        for (let i = 0; i < ids.length; i += CHUNK) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-            await ensureFleaPrices(ids.slice(i, i + CHUNK));
-        }
+        // Only the active mode: the others stay empty until someone switches to them,
+        // which saves every visitor two full ~1.4 MB downloads.
+        if (!(await ensureFleaPrices(ids))) return;
+        _saveFleaCache(true);
         replaceToast("flea-fetch", _t("stats.fleaMarket"), _t("stats.fleaUpdated"), 3000, "#4caf50");
         if (EFTForge.state.priceView) renderPriceOverview();
     } catch (_) {
@@ -208,22 +220,38 @@ async function refetchFleaPrices() {
     }
 }
 
-async function ensureFleaPrices(itemIds) {
-    const missing = itemIds.filter(id => !(id in EFTForge.state.fleaCachePvp));
-    if (missing.length === 0) return;
+// Fills one price mode's cache (the active one by default). Resolves true once every
+// id has a price entry, false if the download failed.
+async function ensureFleaPrices(itemIds, mode = EFTForge.state.priceMode) {
+    const cache = _fleaCacheFor(mode);
+    const missing = itemIds.filter(id => !(id in cache));
+    if (missing.length === 0) return true;
     try {
-        const [pvp, pve, pvpSeason] = await Promise.all([
-            fetchFleaPrices(missing, "regular"),
-            fetchFleaPrices(missing, "pve"),
-            fetchFleaPrices(missing, "pvp-season"),
-        ]);
-        Object.assign(EFTForge.state.fleaCachePvp, pvp);
-        Object.assign(EFTForge.state.fleaCachePve, pve);
-        Object.assign(EFTForge.state.fleaCacheSeasonal, pvpSeason);
+        Object.assign(cache, await fetchFleaPrices(missing, _FLEA_API_MODE[mode] || "regular"));
         _saveFleaCache();
+        return true;
     } catch (err) {
         console.warn("Could not fetch flea prices:", err);
+        return false;
     }
+}
+
+// Called after the price mode changes. The new mode's cache may still be empty since
+// we only download a mode once it's used, so fill it for every id another mode already
+// knows and redraw the open views that show flea prices.
+async function loadFleaPricesForActiveMode() {
+    const mode = EFTForge.state.priceMode;
+    const known = new Set([
+        ...Object.keys(EFTForge.state.fleaCachePvp),
+        ...Object.keys(EFTForge.state.fleaCachePve),
+        ...Object.keys(EFTForge.state.fleaCacheSeasonal),
+    ]);
+    const cache = _fleaCacheFor(mode);
+    if ([...known].every(id => id in cache)) return;
+    if (!(await ensureFleaPrices([...known], mode))) return;
+    if (EFTForge.state.priceMode !== mode) return; // switched again while downloading
+    applyAttachmentSort();
+    if (EFTForge.state.priceView) renderPriceOverview();
 }
 
 // weapon id -> its default-preset pseudo-item ({id, trader_price_rub, trader_vendor,
@@ -233,7 +261,7 @@ const _defaultPresetCache = {};
 async function _fetchDefaultPreset(weaponId) {
     if (weaponId in _defaultPresetCache) return _defaultPresetCache[weaponId];
     try {
-        const res = await fetch(`${EFTForge.config.API_BASE}/build/default-preset?weapon_id=${encodeURIComponent(weaponId)}`);
+        const res = await EFTForge.api.catalogFetch(`/build/default-preset?weapon_id=${encodeURIComponent(weaponId)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         _defaultPresetCache[weaponId] = data.preset || null;
@@ -274,7 +302,7 @@ async function renderPriceOverview() {
     if (ammo) allIds.push(ammo.id);
     if (ubglAmmo) allIds.push(ubglAmmo.id);
 
-    const missingIds = allIds.filter(id => !(id in EFTForge.state.fleaCachePvp));
+    const missingIds = allIds.filter(id => !(id in _fleaCacheFor(EFTForge.state.priceMode)));
     let _fetchDotsInterval = null;
     if (missingIds.length > 0) {
         const label = t("stats.fetchingFleaPrices");
@@ -504,6 +532,7 @@ async function renderPriceOverview() {
         localStorage.setItem("eftforge_price_mode", mode);
         EFTForge.utils.updateBlobColor();
         setTimeout(() => renderPriceOverview(), 160);
+        loadFleaPricesForActiveMode();
     });
 
     document.getElementById("trader-levels-toggle")?.addEventListener("click", () => {

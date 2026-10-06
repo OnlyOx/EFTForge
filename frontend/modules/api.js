@@ -32,8 +32,52 @@ const _postWithId = (path, body) => fetch(`${_base()}${path}`, {
     body:    JSON.stringify(body),
 });
 
+// The item catalog only changes on a backend sync or deploy, so we tag catalog GETs
+// with the server's data version (?dv=) and the CDN and browser can cache them until
+// it changes. If the version can't be fetched we send plain, uncached requests
+// exactly like before, so this can only ever speed things up.
+let _dataVersionPromise = null;
+
+function _dataVersion() {
+    if (!_dataVersionPromise) {
+        // Everything inside the async body, so a failure of any kind resolves to null
+        // instead of throwing at script load.
+        _dataVersionPromise = (async () => {
+            let timer;
+            try {
+                const ctrl = new AbortController();
+                timer = setTimeout(() => ctrl.abort(), 4000);
+                const res = await fetch(`${_base()}/data-version`, { cache: "no-store", signal: ctrl.signal });
+                return res.ok ? (await res.json())?.version || null : null;
+            } catch {
+                return null;
+            } finally {
+                if (timer !== undefined) clearTimeout(timer);
+            }
+        })().then(v => {
+            if (!v) _dataVersionPromise = null; // retry on the next catalog call
+            return v;
+        });
+    }
+    return _dataVersionPromise;
+}
+
+async function catalogFetch(path, options) {
+    const version = await _dataVersion();
+    const url = version ? `${_base()}${path}${path.includes("?") ? "&" : "?"}dv=${encodeURIComponent(version)}` : `${_base()}${path}`;
+    const res = await fetch(url, options);
+    // After a sync our version goes stale and the server answers no-store; adopt the
+    // version it reports so the rest of the session is cacheable again.
+    const current = res.headers.get("X-Data-Version");
+    if (current && current !== version) _dataVersionPromise = Promise.resolve(current);
+    return res;
+}
+
+// Start fetching the version now, while the other scripts are still loading.
+_dataVersion();
+
 async function fetchTraders() {
-    const res = await fetch(`${_base()}/traders`);
+    const res = await catalogFetch("/traders");
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return res.json();
 }
@@ -48,13 +92,13 @@ function _absGunImages(gun) {
 }
 
 async function fetchGuns() {
-    const res = await fetch(`${_base()}/guns?lang=${_lang()}`);
+    const res = await catalogFetch(`/guns?lang=${_lang()}`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return (await res.json()).map(_absGunImages);
 }
 
 async function fetchGraphSearchableItems() {
-    const res = await fetch(`${_base()}/graph/searchable-items`);
+    const res = await catalogFetch("/graph/searchable-items");
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     const data = await res.json();
     data.guns?.forEach(_absGunImages);
@@ -62,7 +106,7 @@ async function fetchGraphSearchableItems() {
 }
 
 async function fetchAmmo(caliber) {
-    const res = await fetch(`${_base()}/ammo/${caliber}?lang=${_lang()}`);
+    const res = await catalogFetch(`/ammo/${caliber}?lang=${_lang()}`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return res.json();
 }
@@ -73,19 +117,19 @@ async function fetchGunInit(gunId, { selectedAmmoId = null, selectedUbglAmmoId =
     if (selectedAmmoId) params.set("selected_ammo_id", selectedAmmoId);
     if (selectedUbglAmmoId) params.set("selected_ubgl_ammo_id", selectedUbglAmmoId);
     params.set("assume_full_mag", assumeFullMag);
-    const res = await fetch(`${_base()}/guns/${gunId}/init?${params}`);
+    const res = await catalogFetch(`/guns/${gunId}/init?${params}`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return res.json();
 }
 
 async function fetchItemSlots(itemId) {
-    const res = await fetch(`${_base()}/items/${itemId}/slots`);
+    const res = await catalogFetch(`/items/${itemId}/slots`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return res.json();
 }
 
 async function fetchSlotAllowedItems(slotId) {
-    const res = await fetch(`${_base()}/slots/${slotId}/allowed-items?lang=${_lang()}`);
+    const res = await catalogFetch(`/slots/${slotId}/allowed-items?lang=${_lang()}`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return res.json();
 }
@@ -243,16 +287,56 @@ function clearFleaPriceCache() {
     for (const k of Object.keys(_fleaMapPromises)) delete _fleaMapPromises[k];
 }
 
+// Runs inside the worker (and as the main-thread fallback). Each dump is ~17 MB of
+// JSON, so parsing it on the page would freeze the UI; only the small price map
+// crosses back. Must stay self-contained since the worker gets its source text.
+async function _downloadFleaMap(gameMode) {
+    const res = await fetch(`https://json.tarkov.dev/${gameMode}/items`);
+    if (!res.ok) throw new Error(`tarkov.dev error: ${res.status}`);
+    const json = await res.json();
+    const items = json.data?.items || {};
+    const out = {};
+    for (const it of Object.values(items)) out[it.id] = it.avg24hPrice ?? null;
+    return out;
+}
+
+// Built from a Blob instead of a separate file so release_prep.py's ?v= hashing
+// still covers it (it only rewrites index.html tags) and it can never be served stale.
+function _downloadFleaMapInWorker(gameMode) {
+    const src = `${_downloadFleaMap.toString()}
+self.onmessage = (e) => _downloadFleaMap(e.data).then(
+    (map) => self.postMessage({ map }),
+    (err) => self.postMessage({ error: String(err?.message || err) }),
+);`;
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    const worker = new Worker(url);
+    URL.revokeObjectURL(url);
+    return new Promise((resolve, reject) => {
+        worker.onmessage = (e) => {
+            worker.terminate();
+            if (e.data.error) reject(new Error(e.data.error));
+            else resolve(e.data.map);
+        };
+        // The worker itself failed to start or crashed (a failed download comes back
+        // as a message instead), so do the work on the page rather than give up.
+        worker.onerror = (e) => {
+            e.preventDefault();
+            worker.terminate();
+            resolve(_downloadFleaMap(gameMode));
+        };
+        worker.postMessage(gameMode);
+    });
+}
+
 function _loadFleaMap(gameMode) {
     if (!_fleaMapPromises[gameMode]) {
-        _fleaMapPromises[gameMode] = (async () => {
-            const res = await fetch(`https://json.tarkov.dev/${gameMode}/items`);
-            if (!res.ok) throw new Error(`tarkov.dev error: ${res.status}`);
-            const json = await res.json();
-            const items = json.data?.items || {};
-            const out = {};
-            for (const it of Object.values(items)) out[it.id] = it.avg24hPrice ?? null;
-            return out;
+        _fleaMapPromises[gameMode] = (() => {
+            try {
+                return _downloadFleaMapInWorker(gameMode);
+            } catch {
+                // No workers here (blocked by CSP or unsupported): parse on the page.
+                return _downloadFleaMap(gameMode);
+            }
         })().catch(err => {
             delete _fleaMapPromises[gameMode]; // allow retry on the next call
             throw err;
@@ -595,4 +679,4 @@ async function fetchMyBuilds() {
     return res.json();
 }
 
-EFTForge.api = { fetchTraders, fetchGuns, fetchGunInit, fetchAmmo, fetchItemSlots, fetchSlotAllowedItems, fetchSlotAllowedItemsBatch, fetchItemSlotsBatch, calculateBuild, validateBuild, batchProcessCandidates, comboBatchProcess, comboFull, exploreStream, fetchFleaPrices, clearFleaPriceCache, fetchBulkRatings, postVote, deleteVote, fetchBulkBuildRatings, postBuildVote, deleteBuildVote, publishBuild, fetchPublicBuilds, fetchMyBuilds, recordBuildLoad, unlistBuild, fetchBanStatus, fetchNotifications, fetchAnnouncements, fetchStaticAnnouncements, fetchLeaderboardBuilds, fetchLeaderboardAttachments, fetchStatChangelog, fetchStatChangelogDates, fetchSyncStatus, fetchBuildImageStatus, peekBuildImageStatus, fetchBuildComments, postBuildComment, deleteOwnComment, adminDeleteComment, uploadAvatar, updateUserProfile, transferPreview, transferAccount };
+EFTForge.api = { catalogFetch, fetchTraders, fetchGuns, fetchGunInit, fetchAmmo, fetchItemSlots, fetchSlotAllowedItems, fetchSlotAllowedItemsBatch, fetchItemSlotsBatch, calculateBuild, validateBuild, batchProcessCandidates, comboBatchProcess, comboFull, exploreStream, fetchFleaPrices, clearFleaPriceCache, fetchBulkRatings, postVote, deleteVote, fetchBulkBuildRatings, postBuildVote, deleteBuildVote, publishBuild, fetchPublicBuilds, fetchMyBuilds, recordBuildLoad, unlistBuild, fetchBanStatus, fetchNotifications, fetchAnnouncements, fetchStaticAnnouncements, fetchLeaderboardBuilds, fetchLeaderboardAttachments, fetchStatChangelog, fetchStatChangelogDates, fetchSyncStatus, fetchBuildImageStatus, peekBuildImageStatus, fetchBuildComments, postBuildComment, deleteOwnComment, adminDeleteComment, uploadAvatar, updateUserProfile, transferPreview, transferAccount };

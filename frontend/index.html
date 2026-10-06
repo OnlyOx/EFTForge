@@ -11,7 +11,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://hm.baidu.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://127.0.0.1:8000 http://localhost:8000; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://json.tarkov.dev https://assets.tarkov.dev https://hm.baidu.com https://gitee.com https://raw.giteeusercontent.com; frame-src https://player.bilibili.com http://player.bilibili.com https://kitbash.eftforge.com http://127.0.0.1:8765">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'self' blob:; script-src 'self' 'unsafe-inline' https://hm.baidu.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://127.0.0.1:8000 http://localhost:8000; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://json.tarkov.dev https://assets.tarkov.dev https://hm.baidu.com https://gitee.com https://raw.giteeusercontent.com; frame-src https://player.bilibili.com http://player.bilibili.com https://kitbash.eftforge.com http://127.0.0.1:8765">
 <title>EFTForge - Modding Lab</title>
 <meta name="description" content="EFTForge - 逃离塔科夫改枪实验室：枪械改装、配件数据、改枪模拟与物品数据查询工具。">
 <meta property="og:title" content="EFTForge - 配置实验室">
@@ -359,16 +359,16 @@ var _hmt = _hmt || [];
 
 <div id="toast-container"></div>
 <!-- Cache-busting: the ?v= params below (and on styles.css at line 22) are content hashes, run frontend/release_prep.py before deploying -->
-<script src="modules/config.js?v=0fe0713c1a"></script>
+<script src="modules/config.js?v=5dcbcac658"></script>
 <script src="modules/state.js?v=3c8f373891"></script>
 <script src="modules/lang.js?v=d0d94850ee"></script>
 <script src="modules/utils.js?v=aac102f306"></script>
 <script src="modules/media-viewer.js?v=cf890c9d21"></script>
 <script src="modules/calculations.js?v=719ee33adf"></script>
 <div id="eft-tooltip"></div>
-<script src="modules/api.js?v=ff6dd5ead1"></script>
+<script src="modules/api.js?v=f6a10359b5"></script>
 <script src="modules/gun-list.js?v=65912d7701"></script>
-<script src="modules/stats-panel.js?v=1d33a0a14d"></script>
+<script src="modules/stats-panel.js?v=b79424ab97"></script>
 <script src="modules/tree.js?v=3f6549ed77"></script>
 <script src="modules/attachment-grid.js?v=a1d7c3d5b3"></script>
 <script src="modules/attachment-grid-devtool.js?v=3b7e6c2a3c"></script><!-- dev only -->
@@ -376,21 +376,21 @@ var _hmt = _hmt || [];
 <script src="modules/slot-selector.js?v=dbe6b626ff"></script>
 <script src="modules/graph.js?v=6821f127eb"></script>
 <script src="data/build-code-catalog-v1.js"></script>
-<script src="modules/build-manager.js?v=0de058bf07"></script>
+<script src="modules/build-manager.js?v=6cdf578037"></script>
 <script src="modules/tab-manager.js?v=5cc021436d"></script>
-<script src="modules/optimizer.js?v=ac4d621b31"></script>
+<script src="modules/optimizer.js?v=b7eb1964a0"></script>
 <script src="modules/builder-3d.js?v=86d49e3786"></script>
 <script src="modules/builder-3d-panels.js?v=7a6ae6ba68"></script>
 <script src="modules/builder-3d-overlaps.js?v=9401d4db5d"></script>
 <script src="modules/profile.js?v=00295da068"></script>
 <script src="modules/screenshot-devtool.js?v=ebee737506"></script><!-- dev only -->
-<script src="app.js?v=414e68bd9a"></script>
+<script src="app.js?v=d1b9ee5b1d"></script>
 <script src="lzstring.min.js?v=95f4d1cbf0"></script>
 <script src="marked.min.js?v=742ee84b0d"></script>
 <script src="modules/news.js?v=c6f66fa9f6"></script>
 <script src="modules/leaderboard.js?v=0bb9713e96"></script>
 <script src="modules/tracker.js?v=0352978b12"></script>
-<script src="modules/ammo-table.js?v=c5682b35b4"></script>
+<script src="modules/ammo-table.js?v=cabe613832"></script>
 <script src="modules/tracker-devtool.js?v=da80365624"></script><!-- dev only -->
 <script src="modules/perf-metrics.js?v=440516ce26"></script>
 <script src="modules/desktop-settings.js?v=5bdf2b23c1"></script><!-- desktop app only -->

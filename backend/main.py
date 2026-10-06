@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from fastapi import BackgroundTasks, FastAPI, Body, Depends, HTTPException, Header, Request
-from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.middleware.gzip import GZipMiddleware as GZIPMiddleware
 from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
@@ -39,7 +39,9 @@ from optimizer.explore_request import ExploreRequest
 from optimizer.process_runner import run_gunsmith, run_job, stream_explore
 from optimizer.cancellation import SolveCancelled, SolveCancellationMiddleware, SolveStreamingResponse
 from optimizer.compat_map import build_compatibility_map
-from solver_cache_epoch import SolverCacheEpochTracker
+from solver_cache_epoch import SolverCacheEpochTracker, read_solver_cache_epoch
+from server_semaphore import server_semaphore
+from catalog_cache import DATA_VERSION_HEADER, CatalogCacheMiddleware, code_stamp, make_data_version
 from database_changelog import changelog_engine, ChangelogSessionLocal, ChangelogBase
 from models_stat_changelog import StatChangeLog  # noqa: F401 - registers table with ChangelogBase.metadata
 
@@ -68,6 +70,7 @@ from config import (
     TRUSTED_PROXY_IPS,
     RUNTIME_DIR,
     DESKTOP_MODE,
+    OPTIMIZER_MAX_SOLVES,
 )
 
 _docs_url = "/docs" if ENABLE_API_DOCS else None
@@ -109,7 +112,20 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "X-Admin-Key", "X-Client-ID"],
+    expose_headers=[DATA_VERSION_HEADER],
 )
+
+# Catalog GETs tagged with ?dv= become cacheable by EdgeOne and browsers (see
+# catalog_cache.py). The lambdas read module state lazily, so names defined further
+# down (the sync flags) are fine here.
+_data_version = make_data_version(
+    db_path=os.path.abspath(engine.url.database or ""),
+    read_epoch=read_solver_cache_epoch,
+    sync_running=lambda: _sync_running or os.path.exists(_SYNC_IN_PROGRESS_FILE),
+    stamp=code_stamp(os.path.dirname(os.path.abspath(__file__))),
+    extra=lambda: str(build_images.available()),
+)
+app.add_middleware(CatalogCacheMiddleware, data_version=_data_version)
 
 if DESKTOP_MODE:
     # Picked up by the Tauri launcher and forwarded to the splash screen -
@@ -748,6 +764,14 @@ def get_sync_status():
         except (OSError, ValueError):
             pass
     return {"sync_running": running, "last_synced_at": last_synced_at}
+
+
+@app.get("/data-version")
+def get_data_version():
+    """The token the frontend adds to catalog requests as ?dv= so the CDN can cache
+    them until the next sync or deploy. Null while a sync runs: clients then send
+    unversioned requests, which are never cached."""
+    return JSONResponse({"version": _data_version()}, headers={"Cache-Control": "no-store"})
 
 
 _DEV_SYNC_NOTICE_FILE = os.path.join(RUNTIME_DIR, "dev_sync_notice.json")
@@ -2192,23 +2216,23 @@ def _solver_cache_generation() -> str:
 # this, a spammed re-optimize button (or a script hitting these endpoints directly,
 # bypassing the frontend's re-click guard) can pile up many overlapping solves on one
 # worker's threadpool and starve every other request that worker is handling. Cap it
-# to one in-flight solve per IP, plus a small global cap per worker process, and fail
+# to one in-flight solve per IP, plus a server-wide cap across all workers, and fail
 # fast with 429 instead of silently queuing behind the threadpool.
 #
 # The per-IP part has to be a file, not an in-memory set: prod runs one Gunicorn
 # worker *process* per CPU core (reset.py), each with its own copy of this module's
 # state, so a plain dict/set would only catch a repeat request that happened to land
 # on the same worker as the first one. A lock file under RUNTIME_DIR is visible to
-# every worker, same as _SYNC_IN_PROGRESS_FILE above. The global semaphore is
-# deliberately left per-worker, not shared the same way - that's the right scaling
-# behavior, since it should track that one process's own CPU/threadpool budget.
+# every worker, same as _SYNC_IN_PROGRESS_FILE above.
+#
+# The global cap is shared across workers too. Every solve is a spawned child process
+# holding a full core and its own copy of scipy, so a per-worker cap let 2 workers run
+# 4 solves on the 2 core / 2 GB prod box and starve every other request.
 _SOLVE_LOCK_DIR = os.path.join(RUNTIME_DIR, "solve_locks")
 os.makedirs(_SOLVE_LOCK_DIR, exist_ok=True)
 _SOLVE_LOCK_STALE_SECONDS = 60
-# Gunicorn already starts one worker per CPU. Keep a small fixed per-worker cap
-# so the fleet cannot grow quadratically with the machine's core count.
-_MAX_CONCURRENT_SOLVES = 2
-_SOLVE_CONCURRENCY_SEM = threading.BoundedSemaphore(_MAX_CONCURRENT_SOLVES)
+_MAX_CONCURRENT_SOLVES = OPTIMIZER_MAX_SOLVES
+_SOLVE_CONCURRENCY_SEM = server_semaphore(_MAX_CONCURRENT_SOLVES, _SOLVE_LOCK_DIR, "slot")
 
 
 def _ip_solve_lock_path(ip: str) -> str:
@@ -3381,7 +3405,7 @@ async def health_imggen():
 # fast one IP may ask (a token bucket that allows the bursts of quick attachment
 # swaps) and how many renders may queue on that lock, and answer 429 past
 # either. The frontend treats any failed render as "show the static image".
-# Per worker process, like _SOLVE_CONCURRENCY_SEM: it guards that process's CPU.
+# Per worker process, unlike _SOLVE_CONCURRENCY_SEM: a render is a few ms of in-process CPU.
 _IMAGE_BURST = 20
 _IMAGE_REFILL_PER_SEC = 4.0
 _image_buckets: dict[str, tuple[float, float]] = {}  # ip -> (tokens, last refill)

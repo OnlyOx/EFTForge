@@ -973,6 +973,7 @@ window.EFTForge.optimizer = (function () {
         document.getElementById('optimizer-price-mode-pve')?.classList.toggle('active', mode === 'pve');
         window.EFTForge.utils?.updateBlobColor();
         _refreshStatRanges();
+        loadFleaPricesForActiveMode();
     }
 
     // Budget's achievable range depends on which items are purchasable at all
@@ -1030,7 +1031,7 @@ window.EFTForge.optimizer = (function () {
             return Promise.resolve(_modFilterData);
         }
         if (_modFilterPromise) return _modFilterPromise.then(() => _fetchModFilterData(weaponId));
-        _modFilterPromise = fetch(`${EFTForge.config.API_BASE}/build/mods?weapon_id=${weaponId}&lang=${lang}`)
+        _modFilterPromise = EFTForge.api.catalogFetch(`/build/mods?weapon_id=${weaponId}&lang=${lang}`)
             .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
             .then(data => {
                 _modFilterData = { weaponId, lang, mods: data.mods };

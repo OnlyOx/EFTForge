@@ -2523,7 +2523,9 @@ function _startNotificationPolling() {
         }
     });
     if (_notifPollInterval) clearInterval(_notifPollInterval);
+    // Hidden tabs wait for the visibilitychange poll above instead.
     _notifPollInterval = setInterval(() => {
+        if (document.hidden) return;
         _pollNotifications();
         _pollAnnouncements();
     }, 5 * 60 * 1000);

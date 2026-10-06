@@ -117,6 +117,7 @@
     "isMobileLayout": "readonly",
     "loadAmmoForGun": "readonly",
     "loadBuildFromPayload": "readonly",
+    "loadFleaPricesForActiveMode": "readonly",
     "marked": "readonly",
     "openMobileRightPanel": "readonly",
     "openSlotSelector": "readonly",

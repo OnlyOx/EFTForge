@@ -175,6 +175,11 @@ KITBASH_DIR = os.environ.get("KITBASH_DIR", _kitbash_default).strip()
 # Decoded-sprite cache per worker process, in MB.
 KITBASH_CACHE_MB = int(os.environ.get("KITBASH_CACHE_MB", "128"))
 
+# Optimizer solves allowed at once across every worker process. Each one is a spawned
+# child process pinning a full core, so the default leaves one core free for regular
+# API traffic. 0 or unset: CPU count minus one, at least 1.
+OPTIMIZER_MAX_SOLVES = int(os.environ.get("OPTIMIZER_MAX_SOLVES", "0")) or max(1, (os.cpu_count() or 2) - 1)
+
 # Desktop mode self-provisions both secrets above, so the guard only applies
 # to web/dev deployments where they must be set explicitly.
 _missing = []

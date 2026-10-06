@@ -86,19 +86,19 @@ async function init() {
       } else {
           const _idsCtrl = new AbortController();
           setTimeout(() => _idsCtrl.abort(), 10000);
-          fetch(`${EFTForge.config.API_BASE}/items/ids`, { signal: _idsCtrl.signal })
+          EFTForge.api.catalogFetch("/items/ids", { signal: _idsCtrl.signal })
             .then(r => r.json())
             .then(async ids => {
-              const missing = ids.filter(id => !(id in EFTForge.state.fleaCachePvp));
+              const fleaCache = EFTForge.state.priceMode === "pve" ? EFTForge.state.fleaCachePve
+                  : EFTForge.state.priceMode === "pvpSeason" ? EFTForge.state.fleaCacheSeasonal
+                  : EFTForge.state.fleaCachePvp;
+              const missing = ids.filter(id => !(id in fleaCache));
               if (missing.length === 0) return;
               const { t: _t } = EFTForge.lang;
               replaceToast("flea-fetch", _t("stats.fleaMarket"), `${_t("stats.fleaFetching")} ${missing.length} ${_t("stats.fleaFetchingItems")}`, 4000, "#f5a623");
-              const CHUNK = 300;
-              for (let i = 0; i < missing.length; i += CHUNK) {
-                await new Promise(resolve => setTimeout(resolve, 0));
-                await ensureFleaPrices(missing.slice(i, i + CHUNK));
+              if (await ensureFleaPrices(missing)) {
+                replaceToast("flea-fetch", _t("stats.fleaMarket"), _t("stats.fleaCached"), 3000, "#4caf50");
               }
-              replaceToast("flea-fetch", _t("stats.fleaMarket"), _t("stats.fleaCached"), 3000, "#4caf50");
             })
             .catch(err => console.warn("Could not fetch item IDs for flea cache:", err));
       }
@@ -519,7 +519,14 @@ async function _checkSyncStatus() {
 function startSyncStatusPolling() {
     if (_syncStatusInterval !== null) return;
     _checkSyncStatus();
-    _syncStatusInterval = setInterval(_checkSyncStatus, 15000);
+    // Skip hidden tabs: people leave us open in the background while they play, and
+    // every one of those polls would hit the server for a toast nobody can see.
+    _syncStatusInterval = setInterval(() => {
+        if (!document.hidden) _checkSyncStatus();
+    }, 15000);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) _checkSyncStatus();
+    });
 }
 
 /* ===========================

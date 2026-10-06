@@ -133,7 +133,7 @@ window.EFTForge.ammoTable = (function () {
         if (container) container.innerHTML = '<div class="ammo-loading">' + _t('ammo.loading') + '</div>';
 
         try {
-            const res  = await fetch(EFTForge.config.API_BASE + '/ammo/all?lang=' + lang);
+            const res  = await EFTForge.api.catalogFetch('/ammo/all?lang=' + lang);
             if (!res.ok) throw new Error('HTTP ' + res.status);
             _cache = await res.json();
             _cacheLang = lang;
