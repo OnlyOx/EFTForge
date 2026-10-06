@@ -7,6 +7,11 @@ from scipy.sparse.csgraph import maximum_bipartite_matching
 
 from optimizer.placement import PlacementModel
 
+# Static rows depend only on the graph signature, so every solve in a request can
+# replay them instead of regenerating hundreds of Hall rows. Keep only a few graphs.
+_STATIC_ROWS = {}
+_STATIC_ROWS_LIMIT = 8
+
 
 class MatchingPlacementModel(PlacementModel):
     mode = "matching_cuts"
@@ -22,11 +27,17 @@ class MatchingPlacementModel(PlacementModel):
             tuple((i, self.mods[i].conflicting_item_ids or "") for i in item_ids),
             weapon.conflicting_item_ids or "",
         )
+        self.signature = signature
         self.shared_cuts = cut_cache.setdefault(signature, {}) if cut_cache is not None else None
         self.shared_cut_count = 0
+        self._blocker_sets = {slot: frozenset(items) for slot, items in self.blockers.items() if items}
 
     def _eligible(self, slot, item, selected_blockers):
-        return not (set(self.blockers.get(slot, ())) & (selected_blockers | {self.weapon.id}) - {item})
+        # Most slots have no blockers at all, so skip the set math for them.
+        blockers = self._blocker_sets.get(slot)
+        if not blockers:
+            return True
+        return not (blockers & (selected_blockers | {self.weapon.id}) - {item})
 
     def _add_row(self, cb, row, rhs, remember=False):
         row = {c: v for c, v in row.items() if v}
@@ -58,6 +69,21 @@ class MatchingPlacementModel(PlacementModel):
             row[self.idx[blocker]] = row.get(self.idx[blocker], 0) + margin
         return self._add_row(cb, row, capacity + margin * len(selected_blockers), remember)
 
+    def _lift(self, items, selected_blockers):
+        # Widen a Hall set to every item that only fits inside the same slots. The
+        # neighborhood and capacity stay the same, so the row stays valid, but one
+        # cut now covers each muzzle device that could pair with the same adapter
+        # instead of rejecting those pairs one native solve at a time.
+        items, selected_blockers = set(items), set(selected_blockers)
+        neighbors = {slot for i in items for slot in self.item_slots[i] if self._eligible(slot, i, selected_blockers)}
+        for i, slots in self.item_slots.items():
+            if i in items or i in selected_blockers:
+                continue
+            eligible = {slot for slot in slots if self._eligible(slot, i, selected_blockers)}
+            if eligible and eligible <= neighbors:
+                items.add(i)
+        return items
+
     def _lower_cut(self, cb, slots, selected_blockers=(), remember=False):
         selected_blockers = set(selected_blockers)
         row, neighbors, capacity = {}, set(), 0
@@ -78,6 +104,27 @@ class MatchingPlacementModel(PlacementModel):
         return self._add_row(cb, row, margin * len(selected_blockers) - capacity, remember)
 
     def add_constraints(self, cb):
+        cached = _STATIC_ROWS.get(self.signature)
+        if cached is None:
+            start = len(cb.rows)
+            self._add_static_constraints(cb)
+            cached = self.item_slots, cb.rows[start:], frozenset(getattr(cb, "matching_cut_keys", ()))
+            if len(_STATIC_ROWS) >= _STATIC_ROWS_LIMIT:
+                _STATIC_ROWS.clear()
+            _STATIC_ROWS[self.signature] = cached
+        else:
+            self.item_slots, rows, keys = cached
+            cb.rows.extend(rows)
+            if not hasattr(cb, "matching_cut_keys"):
+                cb.matching_cut_keys = set()
+            cb.matching_cut_keys.update(keys)
+        if self.shared_cuts is not None:
+            # Snapshot first: parallel Explore solves may learn new cuts meanwhile.
+            for row, rhs in list(self.shared_cuts.values()):
+                self.shared_cut_count += self._add_row(cb, row, rhs)
+        cb.placement = self
+
+    def _add_static_constraints(self, cb):
         incoming = {i: [] for i in self.idx}
         for slot, (owner, required, allowed) in self.slots.items():
             for i in allowed:
@@ -126,10 +173,6 @@ class MatchingPlacementModel(PlacementModel):
         for i in (self.weapon.conflicting_item_ids or "").split(","):
             if i in self.idx:
                 cb.eq({self.idx[i]: 1}, 0)
-        if self.shared_cuts is not None:
-            for row, rhs in self.shared_cuts.values():
-                self.shared_cut_count += self._add_row(cb, row, rhs)
-        cb.placement = self
 
     def add_matching_cut(self, cb, selected):
         selected = sorted(selected)
@@ -168,7 +211,7 @@ class MatchingPlacementModel(PlacementModel):
             required = [s for c, s in enumerate(active) if c not in right and self.slots[s][1]]
             if required and self._lower_cut(cb, required, blockers, remember=True):
                 return True
-        elif left and self._upper_cut(cb, [selected[r] for r in left], blockers, remember=True):
+        elif left and self._upper_cut(cb, self._lift([selected[r] for r in left], blockers), blockers, remember=True):
             return True
         # Keep progress even for an unusual conflict that has no matching witness.
         row = {self.idx[i]: 1 if i in selected_set else -1 for i in self.idx}

@@ -3051,16 +3051,19 @@ window.EFTForge.optimizer = (function () {
         const cancelBtn = document.getElementById('optimizer-cancel-btn');
         if (cancelBtn) cancelBtn.disabled = true;
 
-        const STAGGER_MS = 35, TURN_MS = 280, HOLD_MS = 90, FADE_MS = 380;
+        // FADE_MS matches the .discarded opacity transition in styles.css. Squeeze
+        // the stagger so the whole pass ends within TOTAL_MS however many dots drop.
+        const TOTAL_MS = 1000, TURN_MS = 280, HOLD_MS = 90, FADE_MS = 400;
+        const staggerMs = Math.min(35, (TOTAL_MS - TURN_MS - HOLD_MS - FADE_MS) / Math.max(1, discardedIdx.length - 1));
         const dots = chart.children;
         discardedIdx.forEach((idx, order) => {
             const dot = dots[idx];
             if (!dot) return;
-            const delay = order * STAGGER_MS;
+            const delay = order * staggerMs;
             setTimeout(() => dot.classList.add('discarding'), delay);
             setTimeout(() => dot.classList.add('discarded'), delay + TURN_MS + HOLD_MS);
         });
-        const totalMs = (discardedIdx.length - 1) * STAGGER_MS + TURN_MS + HOLD_MS + FADE_MS;
+        const totalMs = (discardedIdx.length - 1) * staggerMs + TURN_MS + HOLD_MS + FADE_MS;
         return _sleep(totalMs, signal);
     }
 

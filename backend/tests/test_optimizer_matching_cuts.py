@@ -159,3 +159,17 @@ def test_fresh_request_does_not_import_another_requests_cuts():
     cb.eq({2: 1}, 1)
     result = _solve(cb, ids, [-2, -1, 0, 2, 2])
     assert result["metrics"]["placement_refinement_count"] == 1
+
+
+def test_hall_cut_covers_every_item_inside_the_same_slots():
+    # Each d* fits only x, which a also competes for. Lifting the first {a, d0, e}
+    # violation to all d* settles the solve in one refinement instead of eight.
+    devices = [f"d{k}" for k in range(8)]
+    ids = ["a", "e", *devices]
+    placement, cb = _model({"x": (False, ["a", *devices]), "y": (False, ["a", "e"])}, ids)
+    result = _solve(cb, ids, [-3, -3, *[-2] * len(devices)])
+
+    assert result["status"] == "optimal"
+    assert set(result["selected_items"]) == {"a", "e"}
+    assert placement.match(result["selected_items"]) is not None
+    assert result["metrics"]["placement_refinement_count"] == 1

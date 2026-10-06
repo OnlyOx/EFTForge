@@ -442,9 +442,10 @@ def test_deadline_retains_incumbents_and_stops_new_solves(db):
         now[0] = 31
         return result
 
-    with patch.object(explore.time, "perf_counter", side_effect=lambda: now[0]), patch.object(
-        explore, "optimize_weapon", side_effect=timed_solve
-    ) as solve:
+    # Run one solve at a time so no second solve is already in flight.
+    with patch.object(explore, "EXPLORE_WORKERS", 1), patch.object(
+        explore.time, "perf_counter", side_effect=lambda: now[0]
+    ), patch.object(explore, "optimize_weapon", side_effect=timed_solve) as solve:
         result = explore_weapon(db, "gun", OptimizeParams())
     assert solve.call_count == 1
     assert result["points"]

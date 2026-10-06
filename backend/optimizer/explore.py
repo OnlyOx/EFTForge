@@ -1,11 +1,48 @@
 """Sample two-objective tradeoffs using epsilon constraints and the native solver."""
 
+import copy
+import os
+import threading
 import time
+from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 from optimizer.solver import OptimizeParams, optimize_weapon, prepare_optimize_weapon
 
 EXPLORE_TIME_LIMIT_SECONDS = 30
+# HiGHS releases the GIL, so independent samples solve in parallel threads.
+# Results are still consumed in sequential order, so this only changes speed.
+EXPLORE_WORKERS = max(1, int(os.environ.get("EFTFORGE_EXPLORE_WORKERS") or min(os.cpu_count() or 1, 8)))
+
+_POOL = None
+_POOL_LOCK = threading.Lock()
+
+
+def _solve_pool():
+    # Share one pool for the life of the process. Starting new threads while
+    # threads that ran HiGHS are exiting can deadlock on Windows, so never let
+    # solver threads come and go between requests.
+    global _POOL
+    with _POOL_LOCK:
+        if _POOL is None:
+            _POOL = ThreadPoolExecutor(EXPLORE_WORKERS, thread_name_prefix="explore-solve")
+        return _POOL
+
+
+_Request = namedtuple("_Request", "axis record overrides params objective_axis reusable")
+
+
+def _copy_cuts(cache):
+    if cache is None:
+        return None
+    return {axis: {sig: dict(cuts) for sig, cuts in sigs.items()} for axis, sigs in cache.items()}
+
+
+def _merge_cuts(shared, learned):
+    for axis, sigs in learned.items():
+        for sig, cuts in sigs.items():
+            shared.setdefault(axis, {}).setdefault(sig, {}).update(cuts)
 
 
 def _diagnose_empty_explore(db, weapon_id, params, failures, deadline):
@@ -170,18 +207,18 @@ def explore_weapon_stream(db, weapon_id: str, params: OptimizeParams, tradeoff="
     )
     prepared = prepare_optimize_weapon(db, weapon_id, params)
     prepared.local_price_cleanup = tradeoff == "price"
+    warm = getattr(prepared, "warm", None)
+    if warm is not None:
+        warm(db, params)
     solutions = _ErgoFloorSolutions(prepared)
     points, attempts, failures = [], [], []
     reused_count = 0
     completed = True
     done_calls = 0
     total_calls = steps + 1  # 2 boundary solves + (steps - 1) sweep solves
+    pool = _solve_pool() if EXPLORE_WORKERS > 1 else None
 
-    def solve(axis, *, record=True, **overrides):
-        nonlocal completed, reused_count
-        if time.perf_counter() >= deadline:
-            completed = False
-            return None
+    def request(axis, *, record=True, **overrides):
         if axis == "ergo" and use_true_ergo:
             # Same TrueErgo anchor sweep the old single-solve TrueErgo mode runs,
             # pinned to a pure ergo objective (recoil/price weight zeroed out) so
@@ -190,29 +227,34 @@ def explore_weapon_stream(db, weapon_id: str, params: OptimizeParams, tradeoff="
             call_params = replace(
                 params, use_true_ergo=True, ergo_weight=1.0, recoil_weight=0.0, price_weight=0.0, **overrides
             )
-            result = optimize_weapon(db, weapon_id, call_params, deadline=deadline, prepared=prepared)
-            attempts.append(result["status"])
-        else:
-            call_params = replace(params, **overrides)
-            # Only reuse plain linear problems. Keep the TrueErgo/overswing cutting
-            # planes local to each solve, and never reuse across a relaxed bound.
-            reusable = (
-                not use_true_ergo
-                and not params.prevent_overswing
-                and params.min_true_ergo_delta is None
-                and set(overrides) <= {"min_ergonomics"}
-            )
-            result = solutions.get(axis, call_params.min_ergonomics) if reusable else None
-            if result is None:
-                result = optimize_weapon(
-                    db, weapon_id, call_params, deadline=deadline, objective_axis=axis, prepared=prepared
-                )
-                attempts.append(result["status"])
-                if reusable:
-                    solutions.add(axis, call_params.min_ergonomics, result)
-            else:
-                reused_count += 1
-        if result["status"] == "infeasible" and not overrides:
+            return _Request(axis, record, overrides, call_params, None, False)
+        # Only reuse plain linear problems. Keep the TrueErgo/overswing cutting
+        # planes local to each solve, and never reuse across a relaxed bound.
+        reusable = (
+            not use_true_ergo
+            and not params.prevent_overswing
+            and params.min_true_ergo_delta is None
+            and set(overrides) <= {"min_ergonomics"}
+        )
+        return _Request(axis, record, overrides, replace(params, **overrides), axis, reusable)
+
+    def native(req, cut_cache):
+        if time.perf_counter() >= deadline:
+            return None
+        context = prepared
+        if cut_cache is not None:
+            # Give each parallel solve its own copy of the learned cuts so its
+            # path never depends on how its siblings happen to be scheduled.
+            context = copy.copy(prepared)
+            context.placement_cut_cache = cut_cache
+        options = {"deadline": deadline, "prepared": context}
+        if req.objective_axis is not None:
+            options["objective_axis"] = req.objective_axis
+        return optimize_weapon(db, weapon_id, req.params, **options), cut_cache
+
+    def finish(req, result):
+        nonlocal completed
+        if result["status"] == "infeasible" and not req.overrides:
             failures.append(result)
         if result["status"] not in ("optimal", "infeasible"):
             completed = False
@@ -229,44 +271,103 @@ def explore_weapon_stream(db, weapon_id: str, params: OptimizeParams, tradeoff="
             "price": result["grand_total_rub"],
             "build": result,
         }
-        if record:
+        if req.record:
             points.append(point)
         return point
 
-    def ergo_boundary_point(axis):
+    def solve_in_order(requests):
+        """Yield each request's point in order, exactly as solving them one at a
+        time would, while up to EXPLORE_WORKERS native solves run ahead. A
+        request an earlier optimum already answers is reused, never solved."""
+        nonlocal completed, reused_count
+        snapshot = _copy_cuts(getattr(prepared, "placement_cut_cache", None)) if pool is not None else None
+        running = {}
+
+        def covered(req):
+            return req.reusable and solutions.get(req.axis, req.params.min_ergonomics) is not None
+
+        def run_ahead(start):
+            for k in range(start, len(requests)):
+                if sum(not future.done() for future in running.values()) >= EXPLORE_WORKERS:
+                    return
+                if k not in running and not covered(requests[k]):
+                    running[k] = pool.submit(native, requests[k], _copy_cuts(snapshot))
+
+        try:
+            for i, req in enumerate(requests):
+                if pool is not None:
+                    run_ahead(i)
+                future = running.pop(i, None)
+                if time.perf_counter() >= deadline:
+                    completed = False
+                    yield None
+                    continue
+                result = solutions.get(req.axis, req.params.min_ergonomics) if req.reusable else None
+                if result is not None:
+                    reused_count += 1
+                    if future is not None:
+                        future.cancel()
+                    yield finish(req, result)
+                    continue
+                if future is not None:
+                    solved = future.result()
+                else:
+                    solved = native(req, _copy_cuts(snapshot))
+                if solved is None:
+                    completed = False
+                    yield None
+                    continue
+                result, cut_cache = solved
+                if cut_cache is not None:
+                    _merge_cuts(prepared.placement_cut_cache, cut_cache)
+                attempts.append(result["status"])
+                if req.reusable:
+                    solutions.add(req.axis, req.params.min_ergonomics, result)
+                yield finish(req, result)
+        finally:
+            for future in running.values():
+                future.cancel()
+
+    def ergo_boundary_point(axis, max_point):
         """Refine the sweep's ergo-max boundary point (see
         ERGO_BOUNDARY_LEEWAY_POINTS above for why the raw pure-ergo solve
-        alone isn't good enough). First finds the true max achievable ergo,
-        then re-solves on the real tradeoff axis at that max and at a few
-        floors just below it, keeping the lowest-ergo candidate that still
-        clears ERGO_BOUNDARY_MIN_RELATIVE_GAIN's bar over the current best.
-        Every probe here is unrecorded - only the final pick is added to the
-        graph, so the discarded high-ergo/bad-recoil probes never show up as
-        their own points.
+        alone isn't good enough). Starting from the true max achievable ergo,
+        re-solve on the real tradeoff axis at that max and at a few floors just
+        below it, keeping the lowest-ergo candidate that still clears
+        ERGO_BOUNDARY_MIN_RELATIVE_GAIN's bar over the current best. Every
+        probe here is unrecorded - only the final pick is added to the graph,
+        so the discarded high-ergo/bad-recoil probes never show up as their
+        own points.
         """
-        max_point = solve("ergo", record=False)
         if max_point is None:
             return None
         max_ergo = _sampling_value(max_point, "ergo")
         stat_key = "recoil_v" if axis == "recoil" else "price"
-        best = solve(axis, min_ergonomics=max_ergo, record=False) or max_point
         # min_ergonomics is passed as a full override (dataclasses.replace), so it
         # would otherwise silently relax the caller's own explicit floor below what
         # they asked for - clamp to it, and stop once clamping leaves no room left.
         user_floor = params.min_ergonomics if params.min_ergonomics is not None else 0
-        prev_floor = max_ergo
+        floors = [max_ergo]
         for d in range(1, ERGO_BOUNDARY_LEEWAY_POINTS + 1):
             floor = max(max_ergo - d, user_floor)
-            if floor <= 0 or floor >= prev_floor or time.perf_counter() >= deadline:
+            if floor <= 0 or floor >= floors[-1]:
                 break
-            prev_floor = floor
-            candidate = solve(axis, min_ergonomics=floor, record=False)
-            if candidate is None or not _sampling_value(best, stat_key):
-                continue
-            best_value = _sampling_value(best, stat_key)
-            gain = (best_value - _sampling_value(candidate, stat_key)) / best_value
-            if gain >= ERGO_BOUNDARY_MIN_RELATIVE_GAIN * d:
-                best = candidate
+            floors.append(floor)
+        probes = solve_in_order([request(axis, min_ergonomics=floor, record=False) for floor in floors])
+        try:
+            best = next(probes) or max_point
+            for d in range(1, len(floors)):
+                if time.perf_counter() >= deadline:
+                    break
+                candidate = next(probes)
+                if candidate is None or not _sampling_value(best, stat_key):
+                    continue
+                best_value = _sampling_value(best, stat_key)
+                gain = (best_value - _sampling_value(candidate, stat_key)) / best_value
+                if gain >= ERGO_BOUNDARY_MIN_RELATIVE_GAIN * d:
+                    best = candidate
+        finally:
+            probes.close()
         return best
 
     def progress(phase, point, axis, bound_stat=None, bound_value=None):
@@ -285,31 +386,49 @@ def explore_weapon_stream(db, weapon_id: str, params: OptimizeParams, tradeoff="
             "point": point,
         }
 
-    if tradeoff == "ergo":
-        low = solve("recoil")
-        yield progress("boundary_low", low, "recoil")
-        high = solve("price")
-        yield progress("boundary_high", high, "price")
-        if low and high:
-            span = high["recoil_v"] - low["recoil_v"]
-            for i in range(1, steps):
-                if span <= 0:
-                    break
+    def sweep(requests, axis, bound_stat, bounds):
+        nonlocal completed
+        results = solve_in_order(requests)
+        try:
+            for bound in bounds:
                 if time.perf_counter() >= deadline:
                     completed = False
                     break
+                yield progress("sweep", next(results), axis, bound_stat, bound)
+        finally:
+            results.close()
+
+    if tradeoff == "ergo":
+        boundaries = solve_in_order([request("recoil"), request("price")])
+        try:
+            low = next(boundaries)
+            yield progress("boundary_low", low, "recoil")
+            high = next(boundaries)
+            yield progress("boundary_high", high, "price")
+        finally:
+            boundaries.close()
+        if low and high:
+            span = high["recoil_v"] - low["recoil_v"]
+            bounds = []
+            for i in range(1, steps if span > 0 else 1):
                 bound = low["recoil_v"] + span * i / steps
                 if params.max_recoil_v is not None:
                     bound = min(bound, params.max_recoil_v)
-                yield progress("sweep", solve("price", max_recoil_v=bound), "price", "recoil_v", bound)
+                bounds.append(bound)
+            requests = [request("price", max_recoil_v=bound) for bound in bounds]
+            yield from sweep(requests, "price", "recoil_v", bounds)
     else:
         axis = "recoil" if tradeoff == "price" else "price"
-        low = solve(axis)
-        yield progress("boundary_low", low, axis)
-        if use_true_ergo:
-            high = solve("ergo")
-        else:
-            high = ergo_boundary_point(axis)
+        # The low end and the max ergo solve do not depend on each other.
+        boundaries = solve_in_order([request(axis), request("ergo", record=use_true_ergo)])
+        try:
+            low = next(boundaries)
+            yield progress("boundary_low", low, axis)
+            high = next(boundaries)
+        finally:
+            boundaries.close()
+        if not use_true_ergo:
+            high = ergo_boundary_point(axis, high)
             if high is not None:
                 points.append(high)
         yield progress("boundary_high", high, "ergo")
@@ -322,28 +441,25 @@ def explore_weapon_stream(db, weapon_id: str, params: OptimizeParams, tradeoff="
             # endpoint, not the balanced/low-recoil builds people actually choose.
             # The user's own explicit min_ergonomics floor (if any) keeps applying
             # underneath this regardless - it's still part of `params`, forwarded
-            # to every solve() call below same as always.
+            # to every request() below same as always.
             if use_true_ergo:
                 span = high["true_ergo_delta"] - low["true_ergo_delta"]
+                bounds = [low["true_ergo_delta"] + span * i / steps for i in range(1, steps if span > 0 else 1)]
+                requests = [request(axis, min_true_ergo_delta=bound) for bound in bounds]
+                yield from sweep(requests, axis, "true_ergo_delta", bounds)
             else:
                 # Price cleanup may improve an endpoint's ergo. Sample the
                 # original endpoints so v1 still solves the same problems.
                 low_ergo = _sampling_value(low, "ergo")
                 span = _sampling_value(high, "ergo") - low_ergo
-            for i in range(1, steps):
-                if span <= 0:
-                    break
-                if time.perf_counter() >= deadline:
-                    completed = False
-                    break
-                if use_true_ergo:
-                    bound = low["true_ergo_delta"] + span * i / steps
-                    yield progress("sweep", solve(axis, min_true_ergo_delta=bound), axis, "true_ergo_delta", bound)
-                else:
+                bounds = []
+                for i in range(1, steps if span > 0 else 1):
                     bound = low_ergo + span * i / steps
                     if params.min_ergonomics is not None:
                         bound = max(bound, params.min_ergonomics)
-                    yield progress("sweep", solve(axis, min_ergonomics=bound), axis, "ergo", bound)
+                    bounds.append(bound)
+                requests = [request(axis, min_ergonomics=bound) for bound in bounds]
+                yield from sweep(requests, axis, "ergo", bounds)
     if not low or not high:
         completed = completed and bool(attempts) and all(s == "infeasible" for s in attempts)
     frontier = frontier_points(points, tradeoff, use_true_ergo)

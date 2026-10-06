@@ -117,6 +117,8 @@ def discrete_solver(monkeypatch):
             "grand_total_rub": row["price"],
         }
 
+    # Count native calls one at a time; parallel lookahead is covered separately.
+    monkeypatch.setattr(explore, "EXPLORE_WORKERS", 1)
     monkeypatch.setattr(explore, "prepare_optimize_weapon", lambda *args: prepared)
     monkeypatch.setattr(explore, "optimize_weapon", solve)
     monkeypatch.setattr(explore.time, "perf_counter", lambda: now[0])
@@ -208,3 +210,12 @@ def test_price_cleanup_cannot_move_the_native_sampling_grid(discrete_solver, mon
     assert changed_events[0]["point"]["ergo"] == 35
     assert discrete_solver.calls == original_calls
     assert [e.get("bound_value") for e in changed_events] == [e.get("bound_value") for e in original_events]
+
+
+@pytest.mark.parametrize("tradeoff", ["price", "recoil", "ergo"])
+@pytest.mark.parametrize("params", [OptimizeParams(), OptimizeParams(use_true_ergo=True)])
+def test_parallel_lookahead_yields_the_same_events_as_one_worker(discrete_solver, monkeypatch, tradeoff, params):
+    sequential = list(explore.explore_weapon_stream(None, "gun", params, tradeoff, 81))
+    monkeypatch.setattr(explore, "EXPLORE_WORKERS", 4)
+    parallel = list(explore.explore_weapon_stream(None, "gun", params, tradeoff, 81))
+    assert parallel == sequential

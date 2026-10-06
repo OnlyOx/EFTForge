@@ -171,6 +171,9 @@ class ConstraintBuilder:
         self._compiled = None
         self._compiled_row_count = 0
         self._compiled_column_count = 0
+        # Rows are only ever appended, so keep their triplets and only compile new ones.
+        self._triplets = ([], [], [], [], [])
+        self._triplet_row_count = 0
 
     def le(self, coeffs: dict, rhs):
         self.rows.append((coeffs, -np.inf, rhs))
@@ -186,19 +189,19 @@ class ConstraintBuilder:
             return None
         if self._compiled_row_count == len(self.rows) and self._compiled_column_count == self.n:
             return self._compiled
-        row_indices, col_indices, values = [], [], []
-        lb = np.empty(len(self.rows))
-        ub = np.empty(len(self.rows))
-        for row_i, (coeffs, l, u) in enumerate(self.rows):
+        row_indices, col_indices, values, lb, ub = self._triplets
+        for row_i in range(self._triplet_row_count, len(self.rows)):
+            coeffs, l, u = self.rows[row_i]
             for col_i, val in coeffs.items():
                 if val:
                     row_indices.append(row_i)
                     col_indices.append(col_i)
                     values.append(val)
-            lb[row_i] = l
-            ub[row_i] = u
+            lb.append(l)
+            ub.append(u)
+        self._triplet_row_count = len(self.rows)
         A = csc_array((values, (row_indices, col_indices)), shape=(len(self.rows), self.n), dtype=float)
-        self._compiled = LinearConstraint(A, lb, ub)
+        self._compiled = LinearConstraint(A, np.array(lb, dtype=float), np.array(ub, dtype=float))
         self._compiled_column_count = self.n
         self._compiled_row_count = len(self.rows)
         return self._compiled

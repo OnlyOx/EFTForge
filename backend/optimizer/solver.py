@@ -178,6 +178,17 @@ class PreparedOptimizeContext:
     def mods(self):
         return self.candidates[2]
 
+    def warm(self, db, params):
+        # Run every lazy DB lookup a solve might need now, so parallel Explore
+        # solves only ever read this context and never share the DB session.
+        weapon = self.weapon
+        if weapon is None:
+            return
+        ammo, _ubgl = _load_ammo(db, params, self)
+        _choose_base(db, weapon, params, [], self.candidates[3][1], 0, prepared=self)
+        if ammo is not None and ammo.is_ammo:
+            _load_best_offer_price(db, ammo.id, params, prepared=self)
+
     def validate(self, db, weapon_id, params):
         if self.db is not db or self.weapon_id != weapon_id or self.input_key != _prepared_input_key(params):
             raise ValueError("Prepared optimizer inputs require the same session, weapon, market filters and ammo")
@@ -442,22 +453,7 @@ def optimize_weapon(
             "metrics": {**input_metrics, "processing_ms": round((time.perf_counter() - started) * 1000, 3)},
         }
 
-    if prepared is not None and prepared.ammo_loaded:
-        ammo, ubgl_grenade = prepared.ammo, prepared.ubgl_grenade
-    else:
-        ammo = (
-            db.query(Item).filter(Item.id == params.selected_ammo_id).first()
-            if (params.assume_full_mag and params.selected_ammo_id)
-            else None
-        )
-        ubgl_grenade = (
-            db.query(Item).filter(Item.id == params.selected_ubgl_ammo_id).first()
-            if (params.assume_full_mag and params.selected_ubgl_ammo_id)
-            else None
-        )
-        if prepared is not None:
-            prepared.ammo, prepared.ubgl_grenade = ammo, ubgl_grenade
-            prepared.ammo_loaded = True
+    ammo, ubgl_grenade = _load_ammo(db, params, prepared)
     solve_options = {}
     if prepared is not None and objective_axis == "recoil" and params.min_true_ergo_delta is not None:
         # Reuse repeated TED-floor placement cuts without changing plain price cleanup.
@@ -548,6 +544,25 @@ def optimize_weapon(
 
     result["metrics"]["processing_ms"] = round((time.perf_counter() - started) * 1000, 3)
     return result
+
+
+def _load_ammo(db, params, prepared=None):
+    if prepared is not None and prepared.ammo_loaded:
+        return prepared.ammo, prepared.ubgl_grenade
+    ammo = (
+        db.query(Item).filter(Item.id == params.selected_ammo_id).first()
+        if (params.assume_full_mag and params.selected_ammo_id)
+        else None
+    )
+    ubgl_grenade = (
+        db.query(Item).filter(Item.id == params.selected_ubgl_ammo_id).first()
+        if (params.assume_full_mag and params.selected_ubgl_ammo_id)
+        else None
+    )
+    if prepared is not None:
+        prepared.ammo, prepared.ubgl_grenade = ammo, ubgl_grenade
+        prepared.ammo_loaded = True
+    return ammo, ubgl_grenade
 
 
 def _known_price_rub(selected_items, prices):

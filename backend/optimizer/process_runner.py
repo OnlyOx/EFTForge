@@ -7,6 +7,7 @@ clean up immediately when a streaming client disconnects.
 """
 
 import multiprocessing
+import os
 import time
 import traceback
 from dataclasses import asdict
@@ -105,9 +106,31 @@ def _explore_worker(connection, payload: dict) -> None:
         connection.close()
 
 
+_CONTEXT = None
+_PRELOAD = ["database", "optimizer.explore", "optimizer.gunsmith", "optimizer.solver"]
+
+
+def _context():
+    # Fork each job from a server that already imported the solver stack, so a
+    # request skips a fresh interpreter plus the scipy/SQLAlchemy imports. Every
+    # job still gets its own disposable process. Windows has no forkserver, and
+    # EFTFORGE_SOLVER_SPAWN=1 opts back into plain spawn anywhere.
+    global _CONTEXT
+    if _CONTEXT is None:
+        context = multiprocessing.get_context("spawn")
+        if os.environ.get("EFTFORGE_SOLVER_SPAWN") != "1" and "forkserver" in multiprocessing.get_all_start_methods():
+            try:
+                context = multiprocessing.get_context("forkserver")
+                context.set_forkserver_preload(_PRELOAD)
+            except (ValueError, OSError):
+                context = multiprocessing.get_context("spawn")
+        _CONTEXT = context
+    return _CONTEXT
+
+
 def _start_process(target, *args):
     check_cancelled()
-    context = multiprocessing.get_context("spawn")
+    context = _context()
     receive, send = context.Pipe(duplex=False)
     process = context.Process(target=target, args=(send, *args), daemon=True)
     process.start()

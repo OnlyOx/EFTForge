@@ -1,13 +1,40 @@
 """Try a bounded set of cheaper nearby builds without another MILP solve."""
 
+import threading
 import time
 
 import numpy as np
 
-LOCAL_PRICE_SECONDS = 0.02
+# The round, check and move caps below bound this search (it measured under
+# 15 ms at most). Keep the clock only as a safety net that never binds in
+# practice, so a busy server or parallel Explore solves cannot change which
+# cheaper build gets found.
+LOCAL_PRICE_SECONDS = 0.25
 MAX_ROUNDS = 3
 MAX_CHECKS = 48
 MAX_MOVES_PER_RANK = 128
+_CACHE_LOCK = threading.Lock()
+
+
+def _fill_cache(cache, input_key, compat_map, item_ids, prices, mods, item_to_valid_slots):
+    # Share immutable inputs across samples, never across different markets
+    # or candidate orderings. Keep changing model rows out of this cache.
+    if cache.get("input_key") == input_key:
+        return
+    cache.clear()
+    required = {}
+    for slot, info in compat_map.slots_by_id.items():
+        if info.required:
+            required.setdefault(compat_map.slot_owner[slot], []).append(set(compat_map.slot_items[slot]))
+    cache.update(
+        input_key=input_key,
+        price=np.array([prices[i]["price_rub"] for i in item_ids] + [0.0]),
+        ergo=np.array([mods[i].ergonomics_modifier or 0 for i in item_ids] + [0.0]),
+        recoil=np.array([mods[i].recoil_modifier or 0 for i in item_ids] + [0.0]),
+        owners={i: {owner for _, owner in slots} for i, slots in item_to_valid_slots.items()},
+        required=required,
+        neighbors={},
+    )
 
 
 def improve_price(
@@ -35,23 +62,8 @@ def improve_price(
     factory = set((weapon.factory_attachment_ids or "").split(","))
     cache = {} if cache is None else cache
     input_key = (id(compat_map), id(mods), id(prices), tuple(item_ids))
-    if cache.get("input_key") != input_key:
-        # Share immutable inputs across samples, never across different markets
-        # or candidate orderings. Keep changing model rows out of this cache.
-        cache.clear()
-        required = {}
-        for slot, info in compat_map.slots_by_id.items():
-            if info.required:
-                required.setdefault(compat_map.slot_owner[slot], []).append(set(compat_map.slot_items[slot]))
-        cache.update(
-            input_key=input_key,
-            price=np.array([prices[i]["price_rub"] for i in item_ids] + [0.0]),
-            ergo=np.array([mods[i].ergonomics_modifier or 0 for i in item_ids] + [0.0]),
-            recoil=np.array([mods[i].recoil_modifier or 0 for i in item_ids] + [0.0]),
-            owners={i: {owner for _, owner in slots} for i, slots in item_to_valid_slots.items()},
-            required=required,
-            neighbors={},
-        )
+    with _CACHE_LOCK:
+        _fill_cache(cache, input_key, compat_map, item_ids, prices, mods, item_to_valid_slots)
     price, ergo, recoil = cache["price"], cache["ergo"], cache["recoil"]
     base_ergo = weapon.base_ergonomics or 0
     original_indices = [idx[i] for i in original]
