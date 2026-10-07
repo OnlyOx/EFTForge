@@ -22,7 +22,10 @@ For feature-level documentation see [README.md](README.md) (English) / [README_Z
 
 ## Backend architecture (`backend/`)
 
-- **Entry point:** `main.py` (~5800 lines) - all FastAPI routes live here, grouped by feature (items, build, optimizer, image gen, ratings, community builds, comments, profile, notifications, stat tracker, admin).
+- **Entry point:** `main.py` - app wiring only: middleware, database creation, startup tasks, and mounting the routers. Add new endpoints to a router, not here.
+- **Routes (`routers/`):** one `APIRouter` module per feature: `system` (health, sync status, data version), `proxy`, `catalog` (traders, ammo, items, slots), `guns`, `build_calc`, `combo`, `optimizer`, `images`, `ratings`, `leaderboard`, `stat_changelog`, `profile`, `community_builds`, `comments`, `admin_builds`, `moderation` (bans, authors), `announcements`. `routers/shared.py` holds the DB session dependencies, client IP/ID hashing, `require_admin`, request validation limits and the item/user text helpers. `main.py` includes the routers in a fixed order, so keep any route that could match the same path as another one in the right order. A new top-level path still has to be added to the prod nginx allowlist.
+- **Services (`services/`):** logic with no routes of its own, shared by routers: `sync` (hyperactive sync and the catalog data version), `solver_cache`, `solve_limits` (solver rate and concurrency guards), `gitee` (card image and avatar storage), `build_cards` (card drawing and the migration worker), `conflicts`. Runtime flags that get rebound (`services.sync.sync_running` and friends) are read as module attributes, never imported by value.
+- **Schema upgrades:** `db_migrations.py` - hand-written, idempotent `ALTER TABLE` steps run on every startup.
 - **Desktop entry point:** `desktop_main.py` / `desktop.py` - same backend, run in "desktop mode" (`EFTFORGE_DESKTOP=1`), serving the frontend as static files and gating admin/local-only endpoints to `127.0.0.1`.
 - **Databases:** four separate SQLite DBs, each with its own engine/session and model files:
   - `tarkov.db` via `database.py` - item/slot/trader data synced from tarkov.dev (`models_items.py`, `models_slots.py`, `models_slot_allowed.py`, `models_traders.py`, `models_item_offers.py`, `models_weapon_presets.py`).

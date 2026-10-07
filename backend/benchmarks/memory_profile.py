@@ -160,7 +160,9 @@ def main():
         import config
 
         config.RUNTIME_DIR = runtime
-        import main as api
+        import main  # noqa: F401 - creates the app databases
+        from routers import combo, guns
+        from services import solver_cache
 
         memory("main_import")
         from sqlalchemy.orm import Session
@@ -176,7 +178,7 @@ def main():
                 }
             memory("database_open", database_bytes=database.stat().st_size, counts=counts)
             for run in range(args.runs):
-                api._clear_solver_caches()
+                solver_cache.clear_solver_caches()
                 gc.collect()
                 if args.trace:
                     tracemalloc.reset_peak()
@@ -188,7 +190,7 @@ def main():
                         ids = [
                             row[0] for row in db.query(Item.id).filter(Item.is_weapon.is_(True)).order_by(Item.id).all()
                         ]
-                        payloads = [api.get_gun_init(gun_id, lang="en", db=db) for gun_id in ids]
+                        payloads = [guns.get_gun_init(gun_id, lang="en", db=db) for gun_id in ids]
                         sizes = sorted(len(json.dumps(p).encode("utf-8")) for p in payloads)
                         details = {
                             "gun_count": len(ids),
@@ -203,7 +205,7 @@ def main():
                         del result
                     else:
                         slot = "55d5a3074bdc2d61338b4574" if args.case == "stock" else "55d5a2ec4bdc2d972f8b4575"
-                        response = api.combo_full(
+                        response = combo.combo_full(
                             "5447a9cd4bdc2dbd208b4567",
                             [],
                             slot,
@@ -217,16 +219,16 @@ def main():
                         )
                         wire_bytes = asyncio.run(consume(response))
                         del response
-                        cached = next(iter(api._COMBO_FULL_CACHE.values()))
+                        cached = next(iter(solver_cache.COMBO_FULL_CACHE.values()))
                         details = {
                             "wire_bytes": wire_bytes,
                             "metrics": cached["metrics"],
-                            "cache_deep_mib": round(deep_size(api._COMBO_FULL_CACHE) / 1048576, 3),
+                            "cache_deep_mib": round(deep_size(solver_cache.COMBO_FULL_CACHE) / 1048576, 3),
                         }
                         del cached
                 gc.collect()
                 memory("after_workload", run=run + 1, seconds=round(time.perf_counter() - start, 3), **details)
-                api._clear_solver_caches()
+                solver_cache.clear_solver_caches()
                 gc.collect()
                 memory("after_cache_clear", run=run + 1)
             if args.trace:

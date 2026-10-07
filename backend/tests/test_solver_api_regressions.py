@@ -29,7 +29,9 @@ if _HAS_DB:
     os.environ.setdefault("ADMIN_API_KEY", "solver-api-regression-admin-key")
     os.environ.setdefault("DISABLE_BG_MIGRATE", "1")
 
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import combo, optimizer
+    from services import solve_limits, solver_cache
     from database import SessionLocal
     from solver_cache_epoch import SolverCacheEpochTracker
 
@@ -45,11 +47,11 @@ def db():
 
 @pytest.fixture(autouse=True)
 def isolated_solver_caches():
-    main._clear_solver_caches()
+    solver_cache.clear_solver_caches()
     try:
         yield
     finally:
-        main._clear_solver_caches()
+        solver_cache.clear_solver_caches()
 
 
 def _endpoint_defaults(function, excluded):
@@ -61,11 +63,11 @@ def _endpoint_defaults(function, excluded):
 
 
 def _run_optimizer(db, **overrides):
-    kwargs = _endpoint_defaults(main.build_optimize, {"request", "weapon_id", "db"})
+    kwargs = _endpoint_defaults(optimizer.build_optimize, {"request", "weapon_id", "db"})
     kwargs.update(overrides)
-    main._solve_request_last.pop(OPTIMIZER_TEST_IP, None)
+    solve_limits._solve_request_last.pop(OPTIMIZER_TEST_IP, None)
     request = Request({"type": "http", "headers": [], "client": (OPTIMIZER_TEST_IP, 12345)})
-    return main.build_optimize(request=request, weapon_id=PPSH41_ID, db=db, **kwargs)
+    return optimizer.build_optimize(request=request, weapon_id=PPSH41_ID, db=db, **kwargs)
 
 
 async def _consume_combo(response):
@@ -82,7 +84,7 @@ async def _consume_combo(response):
 
 
 def _run_combo(db, *, strength_level=10):
-    response = main.combo_full(
+    response = combo.combo_full(
         M4A1_ID,
         [],
         M4A1_STOCK_SLOT_ID,
@@ -112,21 +114,21 @@ def test_optimizer_cache_key_and_hot_timing(db):
 def test_epoch_change_clears_both_result_caches(monkeypatch):
     generation = {"value": "before-sync"}
     tracker = SolverCacheEpochTracker(lambda: generation["value"])
-    monkeypatch.setattr(main, "_SOLVER_CACHE_EPOCH_TRACKER", tracker)
+    monkeypatch.setattr(solver_cache, "_SOLVER_CACHE_EPOCH_TRACKER", tracker)
 
-    main._COMBO_FULL_CACHE[("combo",)] = {"result": "stale"}
-    main._OPTIMIZE_CACHE[("optimizer",)] = {"result": "stale"}
-    assert main._solver_cache_generation() == "before-sync"
-    assert main._COMBO_FULL_CACHE and main._OPTIMIZE_CACHE
+    solver_cache.COMBO_FULL_CACHE[("combo",)] = {"result": "stale"}
+    solver_cache.OPTIMIZE_CACHE[("optimizer",)] = {"result": "stale"}
+    assert solver_cache.solver_cache_generation() == "before-sync"
+    assert solver_cache.COMBO_FULL_CACHE and solver_cache.OPTIMIZE_CACHE
 
     generation["value"] = "after-sync"
-    assert main._solver_cache_generation() == "after-sync"
-    assert main._COMBO_FULL_CACHE == {}
-    assert main._OPTIMIZE_CACHE == {}
+    assert solver_cache.solver_cache_generation() == "after-sync"
+    assert solver_cache.COMBO_FULL_CACHE == {}
+    assert solver_cache.OPTIMIZE_CACHE == {}
 
 
 def test_frontier_cap_truncation_survives_cache_and_cache_key_changes(db, monkeypatch):
-    monkeypatch.setattr(main, "_COMBO_FRONTIER_CAP", 1)
+    monkeypatch.setattr(combo, "_COMBO_FRONTIER_CAP", 1)
 
     cold = _run_combo(db)
     hot = _run_combo(db)
@@ -142,7 +144,7 @@ def test_frontier_cap_truncation_survives_cache_and_cache_key_changes(db, monkey
 
 
 def test_nested_expansion_truncation_is_reported(db, monkeypatch):
-    monkeypatch.setattr(main, "_COMBO_NESTED_EXPANSION_LIMIT", 0)
+    monkeypatch.setattr(combo, "_COMBO_NESTED_EXPANSION_LIMIT", 0)
 
     result = _run_combo(db)
 

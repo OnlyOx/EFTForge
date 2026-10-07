@@ -17,13 +17,18 @@ def api(monkeypatch):
     # Import lazily so collection does not initialize the application databases.
     os.environ.setdefault("IP_HASH_SECRET", "image-test-secret")
     os.environ.setdefault("ADMIN_API_KEY", "image-test-admin")
+    import build_images
     import main
+    from routers import guns, images, shared
+    from services import build_cards, gitee
 
-    monkeypatch.setattr(main, "_imggen_disabled", False)
-    monkeypatch.setattr(main.build_images, "available", lambda: True)
-    monkeypatch.setattr(main.build_images, "version", lambda: None)
-    monkeypatch.setattr(main, "_image_buckets", {})
-    return main
+    monkeypatch.setattr(images, "_imggen_disabled", False)
+    monkeypatch.setattr(build_images, "available", lambda: True)
+    monkeypatch.setattr(build_images, "version", lambda: None)
+    monkeypatch.setattr(images, "_image_buckets", {})
+    return SimpleNamespace(
+        app=main.app, build_images=build_images, images=images, guns=guns, shared=shared, cards=build_cards, gitee=gitee
+    )
 
 
 def fake_renderer(monkeypatch, api, unrenderable_ammo=None):
@@ -46,13 +51,13 @@ def test_api_rejects_non_weapon_and_mismatched_roots_before_rendering(api, monke
 
     async def run():
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, build(), "preview", db)
+            await api.images.build_image(REQ, GUN, build(), "preview", db)
         assert error.value.status_code == 422
         weapon.is_weapon = True
         items = build()
         items[0]["_tpl"] = "f" * 24
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, items, "preview", db)
+            await api.images.build_image(REQ, GUN, items, "preview", db)
         assert error.value.status_code == 422
         assert calls == []
 
@@ -65,16 +70,16 @@ def test_api_is_unavailable_without_kitbash_or_when_disabled(api, monkeypatch):
 
     async def run():
         monkeypatch.setattr(api.build_images, "available", lambda: False)
-        assert await api.build_image_status() == {"disabled": True, "kitbash": None}
+        assert await api.images.build_image_status() == {"disabled": True, "kitbash": None}
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, build(), "preview", db)
+            await api.images.build_image(REQ, GUN, build(), "preview", db)
         assert error.value.status_code == 503
         monkeypatch.setattr(api.build_images, "available", lambda: True)
-        assert await api.build_image_status() == {"disabled": False, "kitbash": None}
-        monkeypatch.setattr(api, "_imggen_disabled", True)
-        assert await api.build_image_status() == {"disabled": True, "kitbash": None}
+        assert await api.images.build_image_status() == {"disabled": False, "kitbash": None}
+        monkeypatch.setattr(api.images, "_imggen_disabled", True)
+        assert await api.images.build_image_status() == {"disabled": True, "kitbash": None}
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, build(), "preview", db)
+            await api.images.build_image(REQ, GUN, build(), "preview", db)
         assert error.value.status_code == 503
         assert calls == []
 
@@ -89,18 +94,18 @@ def test_loaded_build_renders_with_its_ammo(api, monkeypatch):
         return build() + [{"_id": "c" * 24, "_tpl": "9" * 24, "slotId": "mod_magazine", "parentId": "a" * 24}]
 
     async def run():
-        empty = await api.build_image(REQ, GUN, with_mag(), "preview", db)
-        loaded = await api.build_image(REQ, GUN, with_mag(), "preview", db, True, "6" * 24, "8" * 24)
-        ignored = await api.build_image(REQ, GUN, with_mag(), "preview", db, False, "6" * 24, None)
-        magless = await api.build_image(REQ, GUN, build(), "preview", db, True, "6" * 24, None)
+        empty = await api.images.build_image(REQ, GUN, with_mag(), "preview", db)
+        loaded = await api.images.build_image(REQ, GUN, with_mag(), "preview", db, True, "6" * 24, "8" * 24)
+        ignored = await api.images.build_image(REQ, GUN, with_mag(), "preview", db, False, "6" * 24, None)
+        magless = await api.images.build_image(REQ, GUN, build(), "preview", db, True, "6" * 24, None)
         assert empty == ignored == loaded == magless == {"image_url": api.build_images.data_url(b"webp"), "skipped": []}
         (k0, *none0), (k1, *ammo1), (k2, *none2), (k3, *ammo3) = calls
         assert none0 == none2 == [None, None] and k0 == k2
         assert ammo1 == ["6" * 24, "8" * 24] and k1 != k0
         # No magazine to load, but the round still goes in the chamber.
-        assert ammo3 == ["6" * 24, None] and k3 != api.build_image_key(GUN, build())
+        assert ammo3 == ["6" * 24, None] and k3 != api.build_images.build_image_key(GUN, build())
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, with_mag(), "preview", db, True, "bad", None)
+            await api.images.build_image(REQ, GUN, with_mag(), "preview", db, True, "bad", None)
         assert error.value.status_code == 422
 
     asyncio.run(run())
@@ -113,7 +118,7 @@ def test_unrenderable_build_is_rejected_with_the_reason(api, monkeypatch):
 
     async def run():
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, items, "preview", db, True, "7" * 24, None)
+            await api.images.build_image(REQ, GUN, items, "preview", db, True, "7" * 24, None)
         assert error.value.status_code == 422
         assert "no sprite for that round" in error.value.detail
 
@@ -123,7 +128,7 @@ def test_unrenderable_build_is_rejected_with_the_reason(api, monkeypatch):
 def test_parts_kitbash_cannot_draw_are_left_out(api, monkeypatch):
     monkeypatch.setattr(api.build_images, "render_webp", lambda *args: (b"webp", ["9" * 24]))
     db = SimpleNamespace(get=lambda *args: SimpleNamespace(is_weapon=True, name="test gun"))
-    result = asyncio.run(api.build_image(REQ, GUN, build(), "preview", db))
+    result = asyncio.run(api.images.build_image(REQ, GUN, build(), "preview", db))
     assert result == {"image_url": api.build_images.data_url(b"webp"), "skipped": ["9" * 24]}
 
 
@@ -134,18 +139,18 @@ def test_weapon_kitbash_cannot_draw_is_rejected_with_its_own_code(api, monkeypat
     monkeypatch.setattr(api.build_images, "render_webp", unsupported)
     db = SimpleNamespace(get=lambda *args: SimpleNamespace(is_weapon=True, name="test gun"))
     with pytest.raises(HTTPException) as error:
-        asyncio.run(api.build_image(REQ, GUN, build(), "preview", db))
+        asyncio.run(api.images.build_image(REQ, GUN, build(), "preview", db))
     assert error.value.status_code == 422
     assert error.value.detail["code"] == "unsupported_weapon"
 
 
 def test_gun_list_points_only_unknown_images_at_kitbash(api, monkeypatch):
     monkeypatch.setattr(api.build_images, "available", lambda: True)
-    gun = SimpleNamespace(id=GUN, image_512_link=api.UNKNOWN_IMAGE_512, bare_image_512_link="https://x/bare.webp")
-    assert api._gun_image_512(gun, bare=False) == f"/guns/{GUN}/image"
-    assert api._gun_image_512(gun, bare=True) == "https://x/bare.webp"
+    gun = SimpleNamespace(id=GUN, image_512_link=api.guns.UNKNOWN_IMAGE_512, bare_image_512_link="https://x/bare.webp")
+    assert api.guns._gun_image_512(gun, bare=False) == f"/guns/{GUN}/image"
+    assert api.guns._gun_image_512(gun, bare=True) == "https://x/bare.webp"
     monkeypatch.setattr(api.build_images, "available", lambda: False)
-    assert api._gun_image_512(gun, bare=False) == api.UNKNOWN_IMAGE_512
+    assert api.guns._gun_image_512(gun, bare=False) == api.guns.UNKNOWN_IMAGE_512
 
 
 def test_gun_image_falls_back_to_unknown_when_kitbash_cannot_draw(api, monkeypatch):
@@ -155,34 +160,34 @@ def test_gun_image_falls_back_to_unknown_when_kitbash_cannot_draw(api, monkeypat
         raise api.build_images.Unrenderable("no sprite")
 
     monkeypatch.setattr(api.build_images, "render_webp", unrenderable)
-    gun = SimpleNamespace(id=GUN, is_weapon=True, bare_image_512_link=api.UNKNOWN_IMAGE_512)
+    gun = SimpleNamespace(id=GUN, is_weapon=True, bare_image_512_link=api.guns.UNKNOWN_IMAGE_512)
     db = SimpleNamespace(get=lambda *args: gun)
-    response = asyncio.run(api.get_gun_image(GUN, bare=True, db=db))
+    response = asyncio.run(api.guns.get_gun_image(GUN, bare=True, db=db))
     assert response.status_code == 302
-    assert response.headers["location"] == api.UNKNOWN_IMAGE_512
+    assert response.headers["location"] == api.guns.UNKNOWN_IMAGE_512
 
 
 def test_gun_image_draws_only_guns_tarkov_dev_has_no_image_for(api, monkeypatch):
     calls = fake_renderer(monkeypatch, api)
     gun = SimpleNamespace(
-        id=GUN, is_weapon=True, image_512_link="https://x/full.webp", bare_image_512_link=api.UNKNOWN_IMAGE_512
+        id=GUN, is_weapon=True, image_512_link="https://x/full.webp", bare_image_512_link=api.guns.UNKNOWN_IMAGE_512
     )
     db = SimpleNamespace(get=lambda *args: gun)
-    response = asyncio.run(api.get_gun_image(GUN, bare=False, db=db))
+    response = asyncio.run(api.guns.get_gun_image(GUN, bare=False, db=db))
     assert response.status_code == 302
     assert response.headers["location"] == "https://x/full.webp"
     assert calls == []
     gun.image_512_link = None
-    response = asyncio.run(api.get_gun_image(GUN, bare=False, db=db))
-    assert response.headers["location"] == api.UNKNOWN_IMAGE_512
+    response = asyncio.run(api.guns.get_gun_image(GUN, bare=False, db=db))
+    assert response.headers["location"] == api.guns.UNKNOWN_IMAGE_512
     assert calls == []
-    response = asyncio.run(api.get_gun_image(GUN, bare=True, db=db))
+    response = asyncio.run(api.guns.get_gun_image(GUN, bare=True, db=db))
     assert response.status_code == 200 and response.body == b"webp"
     assert len(calls) == 1
 
 
 def test_gun_routes_are_registered(api):
-    paths = {route.path for route in api.app.routes}
+    paths = set(api.app.openapi()["paths"])
     assert {"/guns", "/guns/{gun_id}/image", "/guns/{gun_id}/init", "/graph/searchable-items"} <= paths
 
 
@@ -192,32 +197,32 @@ def test_one_ip_is_throttled_after_its_burst(api, monkeypatch):
     other = SimpleNamespace(client=SimpleNamespace(host="203.0.113.8"), headers={})
 
     async def run():
-        for _ in range(api._IMAGE_BURST):
-            await api.build_image(REQ, GUN, build(), "preview", db)
+        for _ in range(api.images._IMAGE_BURST):
+            await api.images.build_image(REQ, GUN, build(), "preview", db)
         with pytest.raises(HTTPException) as error:
-            await api.build_image(REQ, GUN, build(), "preview", db)
+            await api.images.build_image(REQ, GUN, build(), "preview", db)
         assert error.value.status_code == 429
         # Another client keeps its own budget.
-        await api.build_image(other, GUN, build(), "preview", db)
+        await api.images.build_image(other, GUN, build(), "preview", db)
 
     asyncio.run(run())
 
 
 def test_renders_past_the_queue_cap_are_turned_away(api, monkeypatch):
     calls = fake_renderer(monkeypatch, api)
-    monkeypatch.setattr(api, "_RENDER_QUEUE_SEM", api.threading.BoundedSemaphore(1))
-    api._RENDER_QUEUE_SEM.acquire()
+    monkeypatch.setattr(api.images, "_RENDER_QUEUE_SEM", api.images.threading.BoundedSemaphore(1))
+    api.images._RENDER_QUEUE_SEM.acquire()
     db = SimpleNamespace(get=lambda *args: SimpleNamespace(is_weapon=True, name="test gun"))
     with pytest.raises(HTTPException) as error:
-        asyncio.run(api.build_image(REQ, GUN, build(), "preview", db))
+        asyncio.run(api.images.build_image(REQ, GUN, build(), "preview", db))
     assert error.value.status_code == 429
     assert calls == []
 
 
 def test_worker_markers_never_reach_clients(api):
-    for marker in ("error:gen-failed", api._CARD_WAITING_PARTS, "dryrun:https://x/build_1.webp", None, ""):
-        assert api._public_card_url(marker) is None
-    assert api._public_card_url("https://gitee.com/x/build_1.webp?v=1") == "https://gitee.com/x/build_1.webp?v=1"
+    for marker in ("error:gen-failed", api.cards.CARD_WAITING_PARTS, "dryrun:https://x/build_1.webp", None, ""):
+        assert api.shared.public_card_url(marker) is None
+    assert api.shared.public_card_url("https://gitee.com/x/build_1.webp?v=1") == "https://gitee.com/x/build_1.webp?v=1"
 
 
 def test_card_kitbash_cannot_draw_yet_waits_instead_of_failing(api, monkeypatch):
@@ -225,25 +230,25 @@ def test_card_kitbash_cannot_draw_yet_waits_instead_of_failing(api, monkeypatch)
 
     monkeypatch.setattr(config, "GITEE_DRY_RUN", True)
     monkeypatch.setattr(api.build_images, "loaded", lambda: True)
-    monkeypatch.setattr(api, "_build_spt_items", lambda gun_id, pairs: build())
+    monkeypatch.setattr(api.cards, "build_spt_items", lambda gun_id, pairs: build())
     saved, waiting = [], []
-    monkeypatch.setattr(api, "_save_build_card", lambda *args: saved.append(args) or True)
-    monkeypatch.setattr(api, "_mark_card_waiting", waiting.append)
+    monkeypatch.setattr(api.cards, "_save_build_card", lambda *args: saved.append(args) or True)
+    monkeypatch.setattr(api.cards, "_mark_card_waiting", waiting.append)
 
     # A part it has no sprite for.
     monkeypatch.setattr(api.build_images, "render_webp", lambda *args: (b"webp", ["9" * 24]))
-    assert api._generate_and_save_build_image(1, GUN, []) == "incomplete"
+    assert api.cards.generate_and_save_build_image(1, GUN, []) == "incomplete"
 
     # A weapon it cannot draw at all.
     def unsupported(*args):
         raise api.build_images.UnsupportedWeapon("no baked model")
 
     monkeypatch.setattr(api.build_images, "render_webp", unsupported)
-    assert api._generate_and_save_build_image(2, GUN, []) == "incomplete"
+    assert api.cards.generate_and_save_build_image(2, GUN, []) == "incomplete"
     assert waiting == [1, 2] and saved == []
 
     monkeypatch.setattr(api.build_images, "render_webp", lambda *args: (b"webp", []))
-    assert api._generate_and_save_build_image(3, GUN, []) == "saved"
+    assert api.cards.generate_and_save_build_image(3, GUN, []) == "saved"
     assert saved == [(3, b"webp", "webp")] and waiting == [1, 2]
 
 
@@ -252,8 +257,8 @@ def test_card_is_not_marked_waiting_when_kitbash_failed_to_load(api, monkeypatch
 
     monkeypatch.setattr(config, "GITEE_DRY_RUN", True)
     monkeypatch.setattr(api.build_images, "loaded", lambda: False)
-    monkeypatch.setattr(api, "_mark_card_waiting", lambda build_id: pytest.fail("must not mark"))
-    assert api._generate_and_save_build_image(1, GUN, []) == "failed"
+    monkeypatch.setattr(api.cards, "_mark_card_waiting", lambda build_id: pytest.fail("must not mark"))
+    assert api.cards.generate_and_save_build_image(1, GUN, []) == "failed"
 
 
 class _FakeBuildsSession:
@@ -271,29 +276,29 @@ class _FakeBuildsSession:
 
 
 def test_card_regen_batch_redraws_waiting_builds_and_releases_its_lock(api, monkeypatch, tmp_path):
-    monkeypatch.setattr(api, "_CARD_REGEN_LOCK_FILE", str(tmp_path / "card_regen.lock"))
+    monkeypatch.setattr(api.cards, "_CARD_REGEN_LOCK_FILE", str(tmp_path / "card_regen.lock"))
     builds = {
-        1: SimpleNamespace(gun_id=GUN, pairs_json="[]", card_image_url=api._CARD_WAITING_PARTS),
+        1: SimpleNamespace(gun_id=GUN, pairs_json="[]", card_image_url=api.cards.CARD_WAITING_PARTS),
         # Given a card some other way after the batch was queued.
-        2: SimpleNamespace(gun_id=GUN, pairs_json="[]", card_image_url=api._GITEE_RAW_PREFIX + "build_2.webp"),
+        2: SimpleNamespace(gun_id=GUN, pairs_json="[]", card_image_url=api.gitee.GITEE_RAW_PREFIX + "build_2.webp"),
         4: SimpleNamespace(gun_id=GUN, pairs_json="[]", card_image_url="error:gen-failed"),
     }
-    monkeypatch.setattr(api, "BuildsSessionLocal", lambda: _FakeBuildsSession(builds))
+    monkeypatch.setattr(api.cards, "BuildsSessionLocal", lambda: _FakeBuildsSession(builds))
     drawn = []
     monkeypatch.setattr(
-        api, "_generate_and_save_build_image", lambda build_id, *args: drawn.append(build_id) or "saved"
+        api.cards, "generate_and_save_build_image", lambda build_id, *args: drawn.append(build_id) or "saved"
     )
 
-    assert api._acquire_card_regen_lock()
-    assert not api._acquire_card_regen_lock()
+    assert api.cards.acquire_card_regen_lock()
+    assert not api.cards.acquire_card_regen_lock()
     # 3 was deleted after the batch was queued.
-    api._regenerate_cards([1, 2, 3, 4])
+    api.cards.regenerate_cards([1, 2, 3, 4])
     assert drawn == [1, 4]
-    assert api._acquire_card_regen_lock()
+    assert api.cards.acquire_card_regen_lock()
 
 
 def test_card_regen_route_is_registered(api):
-    assert "/admin/migration/regenerate-unsupported" in {route.path for route in api.app.routes}
+    assert "/admin/migration/regenerate-unsupported" in api.app.openapi()["paths"]
 
 
 def test_migration_worker_does_not_start_without_kitbash(api, monkeypatch):
@@ -309,6 +314,6 @@ def test_migration_worker_does_not_start_without_kitbash(api, monkeypatch):
     def no_db():
         raise AssertionError("the worker must not touch any build")
 
-    monkeypatch.setattr(api.asyncio, "sleep", no_sleep)
-    monkeypatch.setattr(api, "BuildsSessionLocal", no_db)
-    asyncio.run(api._bg_migrate_build_images())
+    monkeypatch.setattr(api.cards.asyncio, "sleep", no_sleep)
+    monkeypatch.setattr(api.cards, "BuildsSessionLocal", no_db)
+    asyncio.run(api.cards._bg_migrate_build_images())

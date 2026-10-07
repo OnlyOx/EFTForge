@@ -3,7 +3,7 @@
 I'm reusing EFTForge's existing Slot/SlotAllowedItem tables instead of the
 original optimizer's own BFS over a tarkov.dev-shaped item lookup - this is
 the same compatibility graph the Combo Calculator already walks one level at
-a time (see main.py's combo-full route), just traversed all the way out in
+a time (see routers/combo.py's combo-full route), just traversed all the way out in
 one pass here.
 """
 

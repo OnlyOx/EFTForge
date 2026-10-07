@@ -1,5 +1,5 @@
 """Tests for the per-IP / global concurrency guard on the solve endpoints
-(main.py's _solve_slot). Added after a review found /build/optimize had no
+(services/solve_limits.py's solve_slot). Added after a review found /build/optimize had no
 protection against a spammed re-optimize button (or a script hitting the
 endpoint directly) piling up overlapping 30s MILP solves on one worker.
 
@@ -36,7 +36,8 @@ pytestmark = pytest.mark.skipif(
 if _HAS_DB:
     from fastapi import HTTPException
 
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from services import solve_limits
 
 
 def test_same_ip_blocks_second_concurrent_solve():
@@ -44,7 +45,7 @@ def test_same_ip_blocks_second_concurrent_solve():
     release = threading.Event()
 
     def first():
-        with main._solve_slot("1.2.3.4"):
+        with solve_limits.solve_slot("1.2.3.4"):
             entered.set()
             release.wait(timeout=5)
 
@@ -53,7 +54,7 @@ def test_same_ip_blocks_second_concurrent_solve():
     assert entered.wait(timeout=5)
 
     with pytest.raises(HTTPException) as exc:
-        with main._solve_slot("1.2.3.4"):
+        with solve_limits.solve_slot("1.2.3.4"):
             pass
     assert exc.value.status_code == 429
 
@@ -61,23 +62,23 @@ def test_same_ip_blocks_second_concurrent_solve():
     t.join(timeout=5)
 
     # Slot is freed once the first solve's `with` block exits.
-    with main._solve_slot("1.2.3.4"):
+    with solve_limits.solve_slot("1.2.3.4"):
         pass
 
 
 def test_different_ips_do_not_block_each_other():
-    with main._solve_slot("1.1.1.1"):
-        with main._solve_slot("2.2.2.2"):
+    with solve_limits.solve_slot("1.1.1.1"):
+        with solve_limits.solve_slot("2.2.2.2"):
             pass  # no exception
 
 
 def test_global_cap_rejects_excess_concurrent_solves():
-    n = main._MAX_CONCURRENT_SOLVES
+    n = solve_limits._MAX_CONCURRENT_SOLVES
     barrier = threading.Barrier(n + 1, timeout=5)
     release = threading.Event()
 
     def hold(ip):
-        with main._solve_slot(ip):
+        with solve_limits.solve_slot(ip):
             barrier.wait()
             release.wait(timeout=5)
 
@@ -87,7 +88,7 @@ def test_global_cap_rejects_excess_concurrent_solves():
     barrier.wait()  # all n workers are now holding a slot on distinct IPs
 
     with pytest.raises(HTTPException) as exc:
-        with main._solve_slot("10.0.0.999"):
+        with solve_limits.solve_slot("10.0.0.999"):
             pass
     assert exc.value.status_code == 429
 
@@ -101,7 +102,7 @@ def test_ip_lock_file_is_exclusive_under_a_thread_race():
     # OS-level guarantee that makes the lock safe across separate worker
     # processes too - only the atomic create can determine a single winner.
     ip = "8.8.8.8"
-    main._release_ip_solve_lock(ip)  # in case a previous failed run left it behind
+    solve_limits._release_ip_solve_lock(ip)  # in case a previous failed run left it behind
     n = 20
     results = []
     lock = threading.Lock()
@@ -109,7 +110,7 @@ def test_ip_lock_file_is_exclusive_under_a_thread_race():
 
     def attempt():
         barrier.wait()
-        won = main._acquire_ip_solve_lock(ip)
+        won = solve_limits._acquire_ip_solve_lock(ip)
         with lock:
             results.append(won)
 
@@ -121,7 +122,7 @@ def test_ip_lock_file_is_exclusive_under_a_thread_race():
 
     assert results.count(True) == 1
     assert results.count(False) == n - 1
-    main._release_ip_solve_lock(ip)
+    solve_limits._release_ip_solve_lock(ip)
 
 
 def test_ip_lock_self_heals_after_going_stale():
@@ -129,13 +130,13 @@ def test_ip_lock_self_heals_after_going_stale():
     # the lock file is left behind - it must expire on its own instead of
     # permanently blocking that IP.
     ip = "8.8.4.4"
-    assert main._acquire_ip_solve_lock(ip)
-    path = main._ip_solve_lock_path(ip)
-    stale_time = time.time() - main._SOLVE_LOCK_STALE_SECONDS - 1
+    assert solve_limits._acquire_ip_solve_lock(ip)
+    path = solve_limits._ip_solve_lock_path(ip)
+    stale_time = time.time() - solve_limits._SOLVE_LOCK_STALE_SECONDS - 1
     os.utime(path, (stale_time, stale_time))
 
-    assert main._acquire_ip_solve_lock(ip)  # stale lock cleared and reacquired
-    main._release_ip_solve_lock(ip)
+    assert solve_limits._acquire_ip_solve_lock(ip)  # stale lock cleared and reacquired
+    solve_limits._release_ip_solve_lock(ip)
     assert not os.path.exists(path)
 
 
@@ -145,25 +146,25 @@ def test_rate_limit_blocks_rapid_repeat_requests_from_same_ip():
     # serialize), so without this a repeat-params spam wouldn't be throttled
     # at all despite still costing a DB session + query per request.
     ip = "203.0.113.5"
-    main._solve_request_last.pop(ip, None)
-    main._check_solve_rate_limit(ip)  # first request always allowed
+    solve_limits._solve_request_last.pop(ip, None)
+    solve_limits.check_solve_rate_limit(ip)  # first request always allowed
 
     with pytest.raises(HTTPException) as exc:
-        main._check_solve_rate_limit(ip)
+        solve_limits.check_solve_rate_limit(ip)
     assert exc.value.status_code == 429
     assert exc.value.detail["reason_key"] == "optimizer.reason.tooManyRequests"
 
 
 def test_rate_limit_does_not_block_different_ips():
-    main._solve_request_last.pop("203.0.113.6", None)
-    main._solve_request_last.pop("203.0.113.7", None)
-    main._check_solve_rate_limit("203.0.113.6")
-    main._check_solve_rate_limit("203.0.113.7")  # different IP, not throttled
+    solve_limits._solve_request_last.pop("203.0.113.6", None)
+    solve_limits._solve_request_last.pop("203.0.113.7", None)
+    solve_limits.check_solve_rate_limit("203.0.113.6")
+    solve_limits.check_solve_rate_limit("203.0.113.7")  # different IP, not throttled
 
 
 def test_rate_limit_allows_request_after_cooldown_elapses():
     ip = "203.0.113.8"
-    main._solve_request_last.pop(ip, None)
-    main._check_solve_rate_limit(ip)
-    time.sleep(main._SOLVE_REQUEST_COOLDOWN + 0.05)
-    main._check_solve_rate_limit(ip)  # no exception - cooldown has passed
+    solve_limits._solve_request_last.pop(ip, None)
+    solve_limits.check_solve_rate_limit(ip)
+    time.sleep(solve_limits._SOLVE_REQUEST_COOLDOWN + 0.05)
+    solve_limits.check_solve_rate_limit(ip)  # no exception - cooldown has passed

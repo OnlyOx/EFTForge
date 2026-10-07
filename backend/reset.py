@@ -12,7 +12,7 @@ from solver_cache_epoch import bump_solver_cache_epoch
 DB_FILE = "tarkov.db"
 
 # Written by the background dev sync when it detects that data actually
-# changed. Consumed (and deleted) by GET /dev/sync-notice in main.py, which
+# changed. Consumed (and deleted) by GET /dev/sync-notice in routers/system.py, which
 # only ever runs when reset.py's dev branch has produced one - production
 # never calls reset.py, so this file never appears there.
 NOTICE_FILE = "dev_sync_notice.json"
@@ -87,8 +87,8 @@ def _copy_scratch_into_live():
     scratch, so a positional copy can silently shuffle values into the wrong
     columns. Only columns present in both tables are copied; a column that
     exists solely in scratch (freshly added to the model, not yet migrated
-    into the live schema) is skipped for this run and picked up once main.py's
-    startup migration adds it to the live table.
+    into the live schema) is skipped for this run and picked up once
+    db_migrations.py's startup migration adds it to the live table.
     """
     conn = sqlite3.connect(DB_FILE, timeout=10)
     try:

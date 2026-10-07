@@ -16,9 +16,11 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from database import SessionLocal  # noqa: E402
-from main import _clear_solver_caches, combo_full  # noqa: E402
+import main as _app  # noqa: E402,F401 - creates the app databases
+from routers.combo import combo_full  # noqa: E402
 from optimizer.compat_map import build_compatibility_map  # noqa: E402
 from optimizer.solver import OptimizeParams, optimize_weapon  # noqa: E402
+from services.solver_cache import clear_solver_caches  # noqa: E402
 
 CASES: tuple[dict, ...] = (
     {
@@ -103,7 +105,7 @@ async def _consume_combo(response):
 
 
 def _run_combo(case):
-    _clear_solver_caches()
+    clear_solver_caches()
     db = SessionLocal()
     try:
         response = combo_full(
@@ -125,7 +127,7 @@ def _run_combo(case):
 
 
 def _run_optimizer(case):
-    _clear_solver_caches()
+    clear_solver_caches()
     with SessionLocal() as db:
         return optimize_weapon(db, case["weapon_id"], OptimizeParams(**case.get("optimizer_params", {})))
 

@@ -35,14 +35,15 @@ from stats import _compute_stats  # noqa: E402
 def db():
     # Import during execution, after all real-data tests have decided whether
     # a synced database exists. main's import creates an empty development DB.
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from services import solver_cache
 
     engine = create_engine("sqlite://")
     Base.metadata.create_all(engine)
-    main._clear_solver_caches()
+    solver_cache.clear_solver_caches()
     with Session(engine) as session:
         yield session
-    main._clear_solver_caches()
+    solver_cache.clear_solver_caches()
     engine.dispose()
 
 
@@ -251,10 +252,12 @@ async def consume(response):
 
 
 def combo(db, installed=(), excluded=()):
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import combo
+    from services import solver_cache
 
-    main._clear_solver_caches()
-    return asyncio.run(consume(main.combo_full("gun", list(installed), "root", "en", 10, 0, [], list(excluded), db)))
+    solver_cache.clear_solver_caches()
+    return asyncio.run(consume(combo.combo_full("gun", list(installed), "root", "en", 10, 0, [], list(excluded), db)))
 
 
 @pytest.mark.parametrize("external", [False, True])
@@ -322,7 +325,8 @@ def test_combo_nested_owner_conflict_is_pruned_without_changing_results(db):
 
 
 def test_combo_snapshots_preserve_factory_stats_and_request_local_names(db):
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import combo
 
     setup_graph(
         db,
@@ -342,7 +346,7 @@ def test_combo_snapshots_preserve_factory_stats_and_request_local_names(db):
     )
     original_items = {i.id: i for i in db.query(Item).all()}
     for lang, strength, equipment in [("en", 10, 0), ("zh", 51, -0.1)]:
-        result = asyncio.run(consume(main.combo_full("gun", [], "root", lang, strength, equipment, [], [], db)))
+        result = asyncio.run(consume(combo.combo_full("gun", [], "root", lang, strength, equipment, [], [], db)))
         assert len(result["combos"]) > 1
         for build in result["combos"]:
             ids = [build["parent_item"]["id"]] + [i["id"] for i in build["child_items"]]

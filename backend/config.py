@@ -63,7 +63,7 @@ def _sqlite_url(path: str) -> str:
 
 if DESKTOP_MODE:
     DATA_DIR = _resolve_desktop_data_dir()
-    # Lock/notice/last-sync files written by main.py and the sync scripts.
+    # Lock/notice/last-sync files written by the API and the sync scripts.
     RUNTIME_DIR = DATA_DIR
     _default_db_url = _sqlite_url(os.path.join(DATA_DIR, "tarkov.db"))
     _default_ratings_db_url = _sqlite_url(os.path.join(DATA_DIR, "ratings.db"))

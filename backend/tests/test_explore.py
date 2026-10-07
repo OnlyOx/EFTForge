@@ -272,7 +272,8 @@ def test_api_holds_shared_solver_slot_for_entire_curve(db, monkeypatch):
     import json
     from contextlib import contextmanager
     from starlette.requests import Request
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import optimizer
     from optimizer.explore import explore_weapon_stream
 
     events = []
@@ -288,11 +289,11 @@ def test_api_holds_shared_solver_slot_for_entire_curve(db, monkeypatch):
         events.append("solve")
         yield from explore_weapon_stream(db, *args)
 
-    monkeypatch.setattr(main, "_check_solve_rate_limit", lambda ip: events.append("rate"))
-    monkeypatch.setattr(main, "_solve_slot", slot)
-    monkeypatch.setattr(main, "stream_explore", solve)
+    monkeypatch.setattr(optimizer, "check_solve_rate_limit", lambda ip: events.append("rate"))
+    monkeypatch.setattr(optimizer, "solve_slot", slot)
+    monkeypatch.setattr(optimizer, "stream_explore", solve)
     request = Request({"type": "http", "headers": [], "client": ("203.0.113.80", 1234)})
-    response = main.build_explore(request, ExploreRequest(weapon_id="gun", steps=10, max_price=200), db)
+    response = optimizer.build_explore(request, ExploreRequest(weapon_id="gun", steps=10, max_price=200), db)
 
     async def _drain():
         return [chunk async for chunk in response.body_iterator]
@@ -308,12 +309,13 @@ def test_api_holds_shared_solver_slot_for_entire_curve(db, monkeypatch):
 def test_api_rejects_unknown_weapon_before_solver(db, monkeypatch):
     from fastapi import HTTPException
     from starlette.requests import Request
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import optimizer
 
-    monkeypatch.setattr(main, "_check_solve_rate_limit", lambda ip: None)
+    monkeypatch.setattr(optimizer, "check_solve_rate_limit", lambda ip: None)
     request = Request({"type": "http", "headers": [], "client": ("203.0.113.80", 1234)})
     with pytest.raises(HTTPException) as error:
-        main.build_explore(request, ExploreRequest(weapon_id="missing"), db)
+        optimizer.build_explore(request, ExploreRequest(weapon_id="missing"), db)
     assert error.value.status_code == 404
 
 
@@ -327,15 +329,17 @@ def test_api_disconnect_releases_slot_and_allows_next_solve(
     import threading
 
     import main
+    from routers import optimizer, shared
+    from services import solve_limits
     from optimizer.cancellation import check_cancelled
 
     started = threading.Event()
     progress_sent = threading.Event()
     stopped = threading.Event()
     ip = "203.0.113.81"
-    monkeypatch.setattr(main, "_SOLVE_LOCK_DIR", str(tmp_path))
-    monkeypatch.setattr(main, "_SOLVE_CONCURRENCY_SEM", threading.BoundedSemaphore(1))
-    monkeypatch.setattr(main, "_check_solve_rate_limit", lambda ip: None)
+    monkeypatch.setattr(solve_limits, "_SOLVE_LOCK_DIR", str(tmp_path))
+    monkeypatch.setattr(solve_limits, "_SOLVE_CONCURRENCY_SEM", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(optimizer, "check_solve_rate_limit", lambda ip: None)
 
     def solve(*args):
         started.set()
@@ -348,8 +352,8 @@ def test_api_disconnect_releases_slot_and_allows_next_solve(
         finally:
             stopped.set()
 
-    monkeypatch.setattr(main, "stream_explore", solve)
-    main.app.dependency_overrides[main.get_db] = lambda: db
+    monkeypatch.setattr(optimizer, "stream_explore", solve)
+    main.app.dependency_overrides[shared.get_db] = lambda: db
 
     async def run(disconnect):
         body_sent = False
@@ -400,15 +404,15 @@ def test_api_disconnect_releases_slot_and_allows_next_solve(
         def completed(*args):
             yield {"type": "result", "data": {"points": [], "complete": True}}
 
-        monkeypatch.setattr(main, "stream_explore", completed)
+        monkeypatch.setattr(optimizer, "stream_explore", completed)
         sent = asyncio.run(run(False))
         assert sent[0]["status"] == 200
         assert b'"complete": true' in b"".join(message.get("body", b"") for message in sent)
         assert not list(tmp_path.iterdir())
-        assert main._SOLVE_CONCURRENCY_SEM.acquire(blocking=False)
-        main._SOLVE_CONCURRENCY_SEM.release()
+        assert solve_limits._SOLVE_CONCURRENCY_SEM.acquire(blocking=False)
+        solve_limits._SOLVE_CONCURRENCY_SEM.release()
     finally:
-        main.app.dependency_overrides.pop(main.get_db, None)
+        main.app.dependency_overrides.pop(shared.get_db, None)
 
 
 def test_market_and_infeasibility_are_respected(db):

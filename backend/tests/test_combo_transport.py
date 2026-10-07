@@ -18,13 +18,14 @@ from tests.test_reachability_integration import consume, setup_graph
 def db():
     # Import after collection so real-data tests can detect an absent game DB.
     import main
+    from services import solver_cache
 
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     main.Base.metadata.create_all(engine)
-    main._clear_solver_caches()
+    solver_cache.clear_solver_caches()
     with Session(engine) as session:
         yield session
-    main._clear_solver_caches()
+    solver_cache.clear_solver_caches()
     engine.dispose()
 
 
@@ -81,7 +82,8 @@ def test_unknown_format_is_rejected_by_encoder():
 
 
 def request(db, response_format="legacy", **overrides):
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import combo
 
     args = dict(
         base_item_id="gun",
@@ -96,12 +98,13 @@ def request(db, response_format="legacy", **overrides):
         response_format=response_format,
     )
     args.update(overrides)
-    return asyncio.run(consume(main.combo_full(**args)))
+    return asyncio.run(consume(combo.combo_full(**args)))
 
 
 @pytest.mark.parametrize("first_format", ["legacy", "items-v1"])
 def test_formats_share_the_solver_cache_and_keep_request_context(db, first_format):
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from services import solver_cache
 
     setup_graph(
         db,
@@ -110,14 +113,14 @@ def test_formats_share_the_solver_cache_and_keep_request_context(db, first_forma
     )
     first = request(db, first_format, installed_ids=["installed"])
     assert first["metrics"]["cache_hit"] is False
-    cached_before = deepcopy(main._COMBO_FULL_CACHE)
+    cached_before = deepcopy(solver_cache.COMBO_FULL_CACHE)
     second_format = "items-v1" if first_format == "legacy" else "legacy"
     # Any attempt to solve again would need to query the graph.
     with patch.object(db, "query", side_effect=AssertionError("wire format caused another solve")):
         second = request(db, second_format, installed_ids=["installed"])
     assert second["metrics"]["cache_hit"] is True
-    assert len(main._COMBO_FULL_CACHE) == 1
-    assert main._COMBO_FULL_CACHE == cached_before
+    assert len(solver_cache.COMBO_FULL_CACHE) == 1
+    assert solver_cache.COMBO_FULL_CACHE == cached_before
     a, b = expand(first), expand(second)
     assert a["combos"] == b["combos"]
     assert a["base"] == b["base"]
@@ -133,13 +136,14 @@ def test_formats_share_the_solver_cache_and_keep_request_context(db, first_forma
         changed = request(db, "items-v1", installed_ids=["installed"], **changes)
         assert changed["metrics"]["cache_hit"] is False
     assert changed["items"]["p"]["name"] == "p"
-    main._clear_solver_caches()
+    solver_cache.clear_solver_caches()
     assert request(db, "items-v1", installed_ids=["installed"])["metrics"]["cache_hit"] is False
 
 
 @pytest.mark.parametrize("response_format", ["legacy", "items-v1"])
 def test_empty_root_uses_json_and_direct_call_default_stays_legacy(db, response_format):
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import combo
 
     setup_graph(db, {("root", "gun"): []})
     result = request(db, response_format)
@@ -148,17 +152,18 @@ def test_empty_root_uses_json_and_direct_call_default_stays_legacy(db, response_
     if response_format == "items-v1":
         assert result["items"] == {}
         assert result["response_format"] == "items-v1"
-    legacy = main.combo_full("gun", [], "root", "en", 10, 0, [], [], db)
+    legacy = combo.combo_full("gun", [], "root", "en", 10, 0, [], [], db)
     assert isinstance(legacy, dict)
     assert "response_format" not in legacy
     assert expand(result)["base"] == legacy["base"]
 
 
 def test_compact_format_keeps_frontier_limit_and_truncation_metadata(db):
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from routers import combo
 
     setup_graph(db, {("root", "gun"): ["p"], ("child", "p"): ["a", "b", "c"]})
-    with patch.object(main, "_COMBO_FRONTIER_CAP", 2):
+    with patch.object(combo, "_COMBO_FRONTIER_CAP", 2):
         compact = request(db, "items-v1")
         legacy = request(db)
     assert compact["truncated"] is True
@@ -169,6 +174,8 @@ def test_compact_format_keeps_frontier_limit_and_truncation_metadata(db):
 
 def test_http_rejects_unknown_format_before_solving(db):
     import main
+    from routers import shared
+    from services import solver_cache
 
     async def send_request():
         sent = False
@@ -212,6 +219,6 @@ def test_http_rejects_unknown_format_before_solving(db):
         body = b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body")
         assert json.loads(body)["detail"][0]["loc"] == ["body", "response_format"]
 
-    with patch.dict(main.app.dependency_overrides, {main.get_db: lambda: db}):
+    with patch.dict(main.app.dependency_overrides, {shared.get_db: lambda: db}):
         asyncio.run(send_request())
-    assert not main._COMBO_FULL_CACHE
+    assert not solver_cache.COMBO_FULL_CACHE

@@ -272,8 +272,8 @@ def _copy_scratch_into_live() -> None:
     scratch, so a positional copy can silently shuffle values into the wrong
     columns. Only columns present in both tables are copied; a column that
     exists solely in scratch (freshly added to the model, not yet migrated
-    into the live schema) is skipped for this run and picked up once main.py's
-    startup migration adds it to the live table.
+    into the live schema) is skipped for this run and picked up once
+    db_migrations.py's startup migration adds it to the live table.
     """
     conn = sqlite3.connect(_LIVE_DB_PATH, timeout=10)
     try:
