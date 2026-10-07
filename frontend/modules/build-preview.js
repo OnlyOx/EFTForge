@@ -56,7 +56,7 @@ function _bpDisabledTip() {
 
 function _bpApplyGlobalDisabledClass() {
     const tip = _bpGlobalDisabled ? _bpDisabledTip() : null;
-    document.querySelectorAll(".bp-imggen-toggle").forEach(btn => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(".bp-imggen-toggle")).forEach(btn => {
         btn.classList.toggle("bp-imggen-globally-disabled", _bpGlobalDisabled);
         if (tip) {
             btn.dataset.tooltip = tip;
@@ -117,11 +117,11 @@ function _bpApplyToggle(next) {
         const gun = EFTForge.state.currentGun;
         if (gun) {
             const staticSrc  = gun.image_512_link || gun.icon_link || "";
-            const gunCellImg = document.querySelector(".ag-gun-cell img");
+            const gunCellImg = /** @type {HTMLImageElement | null} */ (document.querySelector(".ag-gun-cell img"));
             if (gunCellImg) { gunCellImg.src = staticSrc; gunCellImg.style.opacity = ""; gunCellImg.style.filter = ""; }
             const tableImg = _bpGetListViewImg();
             if (tableImg) { tableImg.src = staticSrc; tableImg.style.opacity = "1"; }
-            const placeholder = document.getElementById("gun-display-image");
+            const placeholder = /** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"));
             if (placeholder) { placeholder.src = staticSrc; }
         }
     } else if (EFTForge.state.currentGun) {
@@ -134,6 +134,7 @@ window.toggleImgGen = toggleImgGen;
 // --- Helpers -------------------------------------------------
 
 // In list view the gun img lives in the attachment table header, not the grid gun cell.
+/** @returns {HTMLImageElement | null} */
 function _bpGetListViewImg() {
     return document.querySelector(".att-table-header .att-table-gun-img");
 }
@@ -160,8 +161,8 @@ function _bpAmmoFor(ammoId, ubglAmmoId) {
 function _bpAmmo() {
     const ubglRow = document.getElementById("ubgl-ammo-row");
     const ubgl = ubglRow && ubglRow.style.display !== "none"
-        ? document.getElementById("ubgl-ammo-select")?.value : null;
-    return _bpAmmoFor(document.getElementById("ammo-select")?.value, ubgl);
+        ? /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"))?.value : null;
+    return _bpAmmoFor(/** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"))?.value, ubgl);
 }
 
 function _bpAmmoKey(ammo) {
@@ -339,7 +340,7 @@ document.querySelectorAll(".bp-display-wrap").forEach(wrap => {
 // language without re-rendering every copy of the logo. We register before
 // app.js's tooltip handler, so the text is in place by the time it reads it.
 document.addEventListener("mouseover", e => {
-    const logo = e.target.closest?.(".kb-working-logo");
+    const logo = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest?.(".kb-working-logo"));
     if (logo) logo.dataset.tooltip = EFTForge.lang.t("bp.kitbashWorking");
 });
 
@@ -397,21 +398,21 @@ function _bpToggleLogoSettle(logo) {
 // The toggle is re-rendered with the tree, so listen on the document. Moves
 // between the toggle's own children are not an enter or a leave.
 document.addEventListener("mouseover", e => {
-    const btn = e.target.closest?.(".bp-imggen-toggle");
-    if (!btn || btn.contains(e.relatedTarget) || btn.classList.contains("bp-imggen-globally-disabled")) return;
+    const btn = /** @type {Element} */ (e.target).closest?.(".bp-imggen-toggle");
+    if (!btn || btn.contains(/** @type {Node | null} */ (e.relatedTarget)) || btn.classList.contains("bp-imggen-globally-disabled")) return;
     const logo = btn.querySelector(".kb-toggle-logo");
     if (logo) _bpToggleLogoJump(logo);
 });
 document.addEventListener("mouseout", e => {
-    const btn = e.target.closest?.(".bp-imggen-toggle");
-    if (!btn || btn.contains(e.relatedTarget)) return;
+    const btn = /** @type {Element} */ (e.target).closest?.(".bp-imggen-toggle");
+    if (!btn || btn.contains(/** @type {Node | null} */ (e.relatedTarget))) return;
     const logo = btn.querySelector(".kb-toggle-logo");
     if (logo) _bpToggleLogoSettle(logo);
 });
 
 // Re-stamp the placeholder after successful generation and tree renders.
 function _bpSetPlaceholder(url) {
-    const img = document.getElementById("gun-display-image");
+    const img = /** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"));
     if (!img) return;
     img.src            = url;
     img.style.display  = "";
@@ -430,7 +431,7 @@ function _bpApplyImageUrl(url) {
 
     if (EFTForge.state.gridView) {
         // Grid view: target the gun cell (recreated each render)
-        const gunCellImg = document.querySelector(".ag-gun-cell img");
+        const gunCellImg = /** @type {HTMLImageElement | null} */ (document.querySelector(".ag-gun-cell img"));
         if (gunCellImg) {
             gunCellImg.src            = url || fallback;
             gunCellImg.style.opacity  = "";
@@ -467,7 +468,7 @@ function _bpApplyStatic(staticUrl, isCommunityCard = false) {
     const referrerPolicy = isCommunityCard ? "no-referrer" : "";
 
     if (EFTForge.state.gridView) {
-        const gunCellImg = document.querySelector(".ag-gun-cell img");
+        const gunCellImg = /** @type {HTMLImageElement | null} */ (document.querySelector(".ag-gun-cell img"));
         if (gunCellImg) {
             gunCellImg.src            = staticUrl || "";
             gunCellImg.style.opacity  = "";
@@ -494,7 +495,7 @@ function _bpSetLoading(isLoading) {
     if (isLoading && !_bpEnabled) return;
 
     if (EFTForge.state.gridView) {
-        const gunCellImg = document.querySelector(".ag-gun-cell img");
+        const gunCellImg = /** @type {HTMLImageElement | null} */ (document.querySelector(".ag-gun-cell img"));
         if (gunCellImg) {
             gunCellImg.style.opacity = isLoading ? "0.35" : "";
             gunCellImg.style.filter  = isLoading ? "brightness(0.85)" : "";
@@ -512,6 +513,10 @@ function _bpSetLoading(isLoading) {
 // Returns a Promise that resolves once the given img element's current src
 // has finished loading (or immediately if already complete / on error).
 // Caps at 5 s so a broken image never leaves the UI permanently dimmed.
+/**
+ * @param {HTMLImageElement | null} img
+ * @returns {Promise<void>}
+ */
 function _bpWaitForImgLoad(img) {
     return new Promise(resolve => {
         if (!img || img.complete) { resolve(); return; }
@@ -589,10 +594,10 @@ async function _bpGenerate(snapshot, revision) {
         _bpLastGunId = gunId;
         _bpApplyImageUrl(data.image_url);
         const targetImg = EFTForge.state.gridView
-            ? document.querySelector(".ag-gun-cell img") : _bpGetListViewImg();
+            ? /** @type {HTMLImageElement | null} */ (document.querySelector(".ag-gun-cell img")) : _bpGetListViewImg();
         await Promise.all([
             _bpWaitForImgLoad(targetImg),
-            _bpWaitForImgLoad(document.getElementById("gun-display-image")),
+            _bpWaitForImgLoad(/** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"))),
         ]);
     } catch (err) {
         if (err.name !== "AbortError" && current()) {
@@ -719,7 +724,7 @@ function resetBuildPreview({ awaitImage = false } = {}) {
                     if (EFTForge.state.gridView) {
                         // Re-stamp the gun cell - renderFullTree recreates the ag-gun-cell
                         // element from scratch with the factory image src every render.
-                        const gunCellImg = document.querySelector(".ag-gun-cell img");
+                        const gunCellImg = /** @type {HTMLImageElement | null} */ (document.querySelector(".ag-gun-cell img"));
                         if (gunCellImg) {
                             gunCellImg.src            = _bpLastImageUrl;
                             gunCellImg.style.opacity  = _bpInflight ? "0.35" : "";

@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * attachment-grid-devtool.js
  *

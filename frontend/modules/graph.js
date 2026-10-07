@@ -1,4 +1,3 @@
-// @ts-check
 // ===================================================================
 //  GRAPH VIEW
 //  Contains all graph-related state and logic.

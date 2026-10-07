@@ -1,4 +1,3 @@
-// @ts-check
 /* Prepare temporary capture compositions without changing build state. */
 (function () {
     if (!['localhost', '127.0.0.1'].includes(location.hostname) && !window.__EFTFORGE_DESKTOP__) return;

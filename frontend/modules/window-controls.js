@@ -1,4 +1,3 @@
-// @ts-check
 /* ============================================================
    DESKTOP APP WINDOW CONTROLS
    Only active inside the packaged desktop app (see desktop-settings.js for

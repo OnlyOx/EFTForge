@@ -195,7 +195,7 @@ function syncBuildDisplayName() {
                 <div>${escapeHtml(buildName)}</div>
             `;
             if (cardImageUrl) {
-                const gunImg = document.getElementById("gun-display-image");
+                const gunImg = /** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"));
                 if (gunImg) {
                     gunImg.src = cardImageUrl;
                     gunImg.style.display = "";
@@ -211,7 +211,7 @@ function syncBuildDisplayName() {
             return;
         }
         // User changed attachments - clear community build state and revert placeholder image
-        const gunImg = document.getElementById("gun-display-image");
+        const gunImg = /** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"));
         if (gunImg) {
             const defaultSrc = gun.image_512_link || gun.icon_link || "";
             gunImg.src = defaultSrc;
@@ -537,8 +537,8 @@ function convertBuildCode(code, format = 3) {
 // Encode current build with the smallest supported dictionary format.
 function encodeBuild() {
     const payload = { v: 1, g: EFTForge.state.currentGun.id, p: collectSlotPairs(EFTForge.state.buildTree) };
-    const ammoId = document.getElementById("ammo-select")?.value;
-    const ubglAmmoId = document.getElementById("ubgl-ammo-select")?.value;
+    const ammoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"))?.value;
+    const ubglAmmoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"))?.value;
     if (ammoId) payload.a = ammoId;
     if (ubglAmmoId) payload.ua = ubglAmmoId;
     return encodeBuildCode(payload);
@@ -548,7 +548,7 @@ function encodeBuild() {
 // Only sets if the option exists in the current caliber's list.
 function _applyPayloadAmmo(ammoId) {
     if (!ammoId) return;
-    const sel = document.getElementById("ammo-select");
+    const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
     if (!sel) return;
     if (!Array.from(sel.options).some(o => o.value === ammoId)) return;
     sel.value = ammoId;
@@ -565,7 +565,7 @@ function _applyPayloadAmmo(ammoId) {
 // Apply a saved UBGL ammo ID to ubgl-ammo-select after a build is loaded.
 function _applyPayloadUbglAmmo(ubglAmmoId) {
     if (!ubglAmmoId) return;
-    const sel = document.getElementById("ubgl-ammo-select");
+    const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"));
     if (!sel) return;
     if (!Array.from(sel.options).some(o => o.value === ubglAmmoId)) return;
     sel.value = ubglAmmoId;
@@ -830,7 +830,7 @@ function _renderSaveBuildBody(prefill, existingTags = null) {
         </div>
     `;
 
-    const input = document.getElementById("save-build-name");
+    const input = /** @type {HTMLInputElement | null} */ (document.getElementById("save-build-name"));
     input.focus();
     input.select();
 
@@ -1056,13 +1056,13 @@ function showBuildsDialog() {
 
     renderSavedBuildsList();
 
-    const searchInput = document.getElementById("builds-search-input");
+    const searchInput = /** @type {HTMLInputElement | null} */ (document.getElementById("builds-search-input"));
     searchInput.addEventListener("input", () => renderSavedBuildsList(searchInput.value));
 
     const myCommunitySearch = document.getElementById("my-community-search");
     if (myCommunitySearch) myCommunitySearch.addEventListener("input", _applyMyCommunityFilter);
 
-    const modalWindow = overlay.querySelector(".modal-window");
+    const modalWindow = /** @type {HTMLElement | null} */ (overlay.querySelector(".modal-window"));
 
     const dropHint = document.createElement("div");
     dropHint.style.cssText = `
@@ -1095,7 +1095,7 @@ function showBuildsDialog() {
         showDrop();
     });
     overlay.addEventListener("dragleave", (e) => {
-        if (!overlay.contains(e.relatedTarget)) hideDrop();
+        if (!overlay.contains(/** @type {Node | null} */ (e.relatedTarget))) hideDrop();
     });
     overlay.addEventListener("drop", (e) => {
         e.preventDefault();
@@ -1162,7 +1162,7 @@ async function showGunBuildsDialog() {
 
     renderSavedBuildsList("", gunId);
 
-    const searchInput = document.getElementById("builds-search-input");
+    const searchInput = /** @type {HTMLInputElement | null} */ (document.getElementById("builds-search-input"));
     searchInput.addEventListener("input", () => renderSavedBuildsList(searchInput.value, gunId));
 
     if (!EFTForge.config.COMMUNITY_DISABLED) {
@@ -1183,7 +1183,7 @@ async function showGunBuildsDialog() {
 function _toggleTagFilter(tag) {
     if (_activeTagFilters.has(tag)) _activeTagFilters.delete(tag);
     else _activeTagFilters.add(tag);
-    const searchInput = document.getElementById("builds-search-input");
+    const searchInput = /** @type {HTMLInputElement | null} */ (document.getElementById("builds-search-input"));
     renderSavedBuildsList(searchInput?.value ?? "", _buildsListGunId);
 }
 window._toggleTagFilter = _toggleTagFilter;
@@ -1485,7 +1485,7 @@ function _restoreNormalPlaceholder({ restoreView = true } = {}) {
 }
 
 async function _confirmPublish(buildName, entryId) {
-    const confirmBtn = document.getElementById("pub-btn-confirm");
+    const confirmBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById("pub-btn-confirm"));
     if (confirmBtn) {
         confirmBtn.disabled = true;
         confirmBtn.textContent = t("publish.publishing");
@@ -1493,7 +1493,7 @@ async function _confirmPublish(buildName, entryId) {
 
     const gun   = EFTForge.state.currentGun;
     const pairs = collectSlotPairs(EFTForge.state.buildTree);
-    const ammoSelect = document.getElementById("ammo-select");
+    const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
     const ammoId = ammoSelect?.value || null;
 
     const stats = {
@@ -1563,7 +1563,7 @@ async function _confirmPublish(buildName, entryId) {
 =========================== */
 
 function _refreshBuildRatingCells() {
-    document.querySelectorAll(".cb-rating[data-build-id]").forEach(div => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(".cb-rating[data-build-id]")).forEach(div => {
         const id      = div.dataset.buildId;
         const data    = (EFTForge.state.buildRatingsCache || {})[id];
         if (!data) return;
@@ -1693,8 +1693,8 @@ function _applyPublicBuildsFilter() {
     const container = document.getElementById("public-builds-list");
     if (!container || !container._publicBuilds) return;
 
-    const query  = (document.getElementById("cb-search-input")?.value  || "").trim().toLowerCase();
-    const sortBy = document.getElementById("cb-sort-select")?.value || "default";
+    const query  = (/** @type {HTMLInputElement | null} */ (document.getElementById("cb-search-input"))?.value  || "").trim().toLowerCase();
+    const sortBy = /** @type {HTMLSelectElement | null} */ (document.getElementById("cb-sort-select"))?.value || "default";
 
     let builds = [...container._publicBuilds];
 
@@ -1716,7 +1716,7 @@ function _applyPublicBuildsFilter() {
     const ratings = EFTForge.state.buildRatingsCache || {};
     switch (sortBy) {
         case "newest":
-            builds.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+            builds.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
             break;
         case "loads":
             builds.sort((a, b) => (b.load_count || 0) - (a.load_count || 0));
@@ -1737,7 +1737,7 @@ function _applyPublicBuildsFilter() {
         default:
             builds.sort((a, b) => {
                 if (b.is_featured !== a.is_featured) return b.is_featured ? 1 : -1;
-                return new Date(b.published_at) - new Date(a.published_at);
+                return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
             });
     }
 
@@ -2168,7 +2168,7 @@ function _applyMyCommunityFilter() {
     const { t } = EFTForge.lang;
     const lang = EFTForge.state.lang;
 
-    const query = (document.getElementById("my-community-search")?.value || "").trim().toLowerCase();
+    const query = (/** @type {HTMLInputElement | null} */ (document.getElementById("my-community-search"))?.value || "").trim().toLowerCase();
 
     let builds = container._myBuilds;
     if (query) {
@@ -2315,7 +2315,7 @@ async function _unlistMyBuild(btn, buildId) {
         const card = btn.closest(".cb-card");
         if (card) card.remove();
 
-        renderSavedBuildsList(document.getElementById("builds-search-input")?.value ?? "");
+        renderSavedBuildsList(/** @type {HTMLInputElement | null} */ (document.getElementById("builds-search-input"))?.value ?? "");
         showToast(t("toast.unlistSuccess"), t("toast.unlistSuccessMsg"), 3000, "#4CAF50");
     } catch (err) {
         showToast(t("toast.unlistFailed"), err.message || "", 3500);
@@ -2348,7 +2348,7 @@ function _showBanToast(bannedUntil, reason) {
         return;
     }
     const expiry      = new Date(bannedUntil);
-    const hours       = Math.ceil((expiry - Date.now()) / 3600000);
+    const hours       = Math.ceil((expiry.getTime() - Date.now()) / 3600000);
     const durationStr = hours >= 24 ? `${Math.round(hours / 24)} days` : `${hours} hours`;
     const dateStr     = expiry.toLocaleString();
     showToast(
@@ -2552,6 +2552,12 @@ function buildSlotParentMap(node, map) {
 // pass their own so switching to one restores it in the SAME render as the build
 // itself - without it the caller has to reapply the state and pay a second full
 // renderFullTree() just to reflect it.
+/**
+ * @param {{ v?: number, g: string, p: any[], a?: string | null, ua?: string | null }} payload
+ * @param {string | null} [buildName]
+ * @param {boolean} [silent]
+ * @param {{ collapsedSlots?: any }} [options]
+ */
 async function loadBuildFromPayload({ g: gunId, p: pairs, a: ammoId = null, ua: ubglAmmoId = null }, buildName = null, silent = false, { collapsedSlots = null } = {}) {
     const gun = gunById(gunId);
     if (!gun) {
@@ -2906,14 +2912,14 @@ function _resolveMergeConflicts(conflicts, cleanToAdd, existingBuilds) {
     const overlay = document.getElementById("merge-conflict-dialog");
 
     // Resolution button toggle logic
-    overlay.querySelectorAll(".mc-res-btn").forEach(btn => {
+    /** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(".mc-res-btn")).forEach(btn => {
         btn.addEventListener("click", () => {
             const i = parseInt(btn.dataset.idx);
             const action = btn.dataset.action;
             resolutions[i] = action;
 
             // Update active state for this row's buttons
-            overlay.querySelectorAll(`.mc-res-btn[data-idx="${i}"]`).forEach(b => {
+            /** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(`.mc-res-btn[data-idx="${i}"]`)).forEach(b => {
                 b.classList.toggle("mc-active", b.dataset.action === action);
             });
 
@@ -2921,8 +2927,8 @@ function _resolveMergeConflicts(conflicts, cleanToAdd, existingBuilds) {
             const renameRow = document.getElementById(`mc-rename-row-${i}`);
             renameRow.style.display = action === "rename" ? "" : "none";
             if (action === "rename") {
-                document.getElementById(`mc-rename-input-${i}`).focus();
-                document.getElementById(`mc-rename-input-${i}`).select();
+                /** @type {HTMLInputElement} */ (document.getElementById(`mc-rename-input-${i}`)).focus();
+                /** @type {HTMLInputElement} */ (document.getElementById(`mc-rename-input-${i}`)).select();
             }
             // Clear any prior error
             document.getElementById(`mc-rename-err-${i}`).textContent = "";
@@ -2943,7 +2949,7 @@ function _resolveMergeConflicts(conflicts, cleanToAdd, existingBuilds) {
 
             if (resolutions[i] !== "rename") continue;
 
-            const newName = document.getElementById(`mc-rename-input-${i}`).value.trim().slice(0, 60);
+            const newName = /** @type {HTMLInputElement} */ (document.getElementById(`mc-rename-input-${i}`)).value.trim().slice(0, 60);
 
             if (!newName) {
                 errEl.textContent = t("modal.nameEmpty");
@@ -2972,7 +2978,7 @@ function _resolveMergeConflicts(conflicts, cleanToAdd, existingBuilds) {
         // Build resolvedList from current state
         const resolvedList = conflicts.map((build, i) => {
             if (resolutions[i] === "rename") {
-                const newName = document.getElementById(`mc-rename-input-${i}`).value.trim().slice(0, 60);
+                const newName = /** @type {HTMLInputElement} */ (document.getElementById(`mc-rename-input-${i}`)).value.trim().slice(0, 60);
                 return { build: { ...build, name: newName }, action: "add" };
             }
             return { build, action: resolutions[i] };
@@ -3014,7 +3020,7 @@ function _finalizeMerge(cleanToAdd, resolvedList, existingBuilds) {
 async function pasteImportCode() {
     try {
         const text = await navigator.clipboard.readText();
-        const input = document.getElementById("import-code-input");
+        const input = /** @type {HTMLInputElement | null} */ (document.getElementById("import-code-input"));
         if (input) {
             input.value = text;
             input.focus();

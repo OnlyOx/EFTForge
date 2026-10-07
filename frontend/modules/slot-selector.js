@@ -75,7 +75,7 @@ function _setLocalVote(itemId, vote) {
 }
 
 function _refreshRatingCells() {
-    document.querySelectorAll(".att-rating[data-item-id]").forEach(div => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(".att-rating[data-item-id]")).forEach(div => {
         const id   = div.dataset.itemId;
         const data = EFTForge.state.ratingsCache[id];
         if (!data) return;
@@ -222,7 +222,7 @@ function _tedContext(emptiedWeight, parentNode = EFTForge.state.lastParentNode, 
         if (node.item.magazine_capacity > 0) removedCap += node.item.magazine_capacity;
         for (const sid in node.children) walk(node.children[sid]);
     })(installed);
-    const ammoId = globalThis.document?.getElementById("ammo-select")?.value;
+    const ammoId = /** @type {HTMLSelectElement | null} */ (globalThis.document?.getElementById("ammo-select"))?.value;
     const perRound = EFTForge.state.assumeFullMag ? (EFTForge.state.ammoWeightMap?.[ammoId] ?? 0) : 0;
     // Everything the loaded build weighs beyond its parts is ammo; what the installed
     // subtree's magazines held leaves with them, the rest (other magazines, a UBGL
@@ -368,7 +368,7 @@ async function _loadSlotCandidates(parentNode, slot, { stale = () => false, rati
 
   // Cache key: slot ID + current build state so cache invalidates when build changes
   // The ammo carried and the equipment modifier change TED, so they're part of the key
-  const cacheKey = `${slot.id}__${slotEmptiedIds.slice().sort().join(",")}__${EFTForge.state.assumeFullMag ? 1 : 0}|${globalThis.document?.getElementById("ammo-select")?.value ?? ""}|${EFTForge.state.lastTotalWeight ?? ""}|${EFTForge.state.currentEquipErgoModifier ?? 0}`;
+  const cacheKey = `${slot.id}__${slotEmptiedIds.slice().sort().join(",")}__${EFTForge.state.assumeFullMag ? 1 : 0}|${/** @type {HTMLSelectElement | null} */ (globalThis.document?.getElementById("ammo-select"))?.value ?? ""}|${EFTForge.state.lastTotalWeight ?? ""}|${EFTForge.state.currentEquipErgoModifier ?? 0}`;
 
   if (EFTForge.state.processedCache[cacheKey]) {
       return { items, processedItems: EFTForge.state.processedCache[cacheKey], fromCache: true };
@@ -658,7 +658,7 @@ async function openSlotSelector(parentNode, slot) {
   const searchInput = document.getElementById("attachment-search");
   if (searchInput) {
       searchInput.addEventListener("input", (e) => {
-          applyAttachmentSearch(e.target.value);
+          applyAttachmentSearch(/** @type {HTMLInputElement} */ (e.target).value);
       });
   }
 
@@ -707,7 +707,7 @@ async function _reprocessOpenSlot() {
     }
 
     // The ammo carried and the equipment modifier change TED, so they're part of the key
-    const cacheKey = `${slot.id}__${slotEmptiedIds.slice().sort().join(",")}__${EFTForge.state.assumeFullMag ? 1 : 0}|${globalThis.document?.getElementById("ammo-select")?.value ?? ""}|${EFTForge.state.lastTotalWeight ?? ""}|${EFTForge.state.currentEquipErgoModifier ?? 0}`;
+    const cacheKey = `${slot.id}__${slotEmptiedIds.slice().sort().join(",")}__${EFTForge.state.assumeFullMag ? 1 : 0}|${/** @type {HTMLSelectElement | null} */ (globalThis.document?.getElementById("ammo-select"))?.value ?? ""}|${EFTForge.state.lastTotalWeight ?? ""}|${EFTForge.state.currentEquipErgoModifier ?? 0}`;
 
     if (EFTForge.state.processedCache[cacheKey]) {
         if (myGen !== _reprocessOpenSlotGen) return;
@@ -933,7 +933,7 @@ function applyAttachmentSort() {
 }
 
 function _updateColumnVisibility(items) {
-    const table = document.querySelector(".attachment-table");
+    const table = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
     if (!table) return;
 
     const hasWeight  = items.some(e => parseFloat(e.item.weight ?? 0) !== 0);
@@ -1027,7 +1027,7 @@ function updateComboBalance(value) {
     localStorage.setItem("eftforge_combo_ergo_weight", value);
     const label = document.getElementById("balance-value");
     if (label) label.textContent = `${value}%`;
-    const slider = document.getElementById("balance-slider");
+    const slider = /** @type {HTMLInputElement | null} */ (document.getElementById("balance-slider"));
     if (slider) slider.value = value;
     applyComboSort();
 }
@@ -1348,7 +1348,7 @@ function _showHoverDeltas(entry, ctx = {}) {
     let magCapWeightCorrection = 0;
     const candidateMagCap = entry.item?.magazine_capacity ?? null;
     if (EFTForge.state.assumeFullMag && candidateMagCap != null && installedMagCap != null) {
-        const ammoSelect = document.getElementById("ammo-select");
+        const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
         const ammoWeightPerRound = EFTForge.state.ammoWeightMap?.[ammoSelect?.value] ?? 0;
         const capDiff = candidateMagCap - installedMagCap;
         magCapWeightCorrection = ammoWeightPerRound * capDiff;
@@ -1947,7 +1947,7 @@ function setListView() {
         EFTForge.state.graphMode = false;
         _cleanupGraphState();
         document.getElementById("attachment-graph")?.remove();
-        const table = document.querySelector(".attachment-table");
+        const table = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
         if (table) table.style.display = "";
         const searchInput = document.getElementById("attachment-search");
         if (searchInput) searchInput.style.display = "";
@@ -1958,7 +1958,7 @@ function setListView() {
     const _recoilLabelList = document.getElementById("th-recoil-label");
     if (_recoilLabelList) _recoilLabelList.textContent = EFTForge.lang.t("th.recoil");
 
-    const slideTable = document.querySelector(".attachment-table");
+    const slideTable = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
     if (slideTable) {
         slideTable.classList.remove("table-slide-in");
         void slideTable.offsetWidth;
@@ -1978,7 +1978,7 @@ function setComboView(wantCombo) {
         EFTForge.state.graphMode = false;
         _cleanupGraphState();
         document.getElementById("attachment-graph")?.remove();
-        const table = document.querySelector(".attachment-table");
+        const table = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
         if (table) table.style.display = "";
         const searchInput = document.getElementById("attachment-search");
         if (searchInput) searchInput.style.display = "";
@@ -1990,7 +1990,7 @@ function setComboView(wantCombo) {
     const _recoilLabelCombo = document.getElementById("th-recoil-label");
     if (_recoilLabelCombo) _recoilLabelCombo.textContent = EFTForge.lang.t("th.recoil");
 
-    const slideTableCombo = document.querySelector(".attachment-table");
+    const slideTableCombo = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
     if (slideTableCombo) {
         slideTableCombo.classList.remove("table-slide-in");
         void slideTableCombo.offsetWidth;
@@ -2357,7 +2357,7 @@ function applyComboSort() {
 }
 
 function _updateComboColumnVisibility(items) {
-    const table = document.querySelector(".attachment-table");
+    const table = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
     if (!table) return;
 
     let hasWeight = false, hasRecoil = false, hasErgo = false, hasTrueErgo = false, hasPrice = false;
@@ -2501,7 +2501,7 @@ function _buildComboRow(entry) {
     `;
 
     const _iconScroll   = row.querySelector(".combo-icon-scroll");
-    const _comboMarquee = _iconScroll?.querySelector(".combo-marquee");
+    const _comboMarquee = /** @type {HTMLElement | null} */ (_iconScroll?.querySelector(".combo-marquee"));
     if (_iconScroll && _comboMarquee) {
         let _elGen = 0;
         const _sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -2599,7 +2599,7 @@ function _buildComboRow(entry) {
                     `</div>`;
             }).join("");
             const html = `<div class="price-bd">${rows}<div class="price-bd-total"><span>&#931;</span><span>${_formatPrice(total)}</span></div></div>`;
-            row.children[1].dataset.tooltipHtml = html;
+            /** @type {HTMLElement} */ (row.children[1]).dataset.tooltipHtml = html;
         }
     }
 
@@ -2679,7 +2679,7 @@ function _buildComboRow(entry) {
                 }
             }
             if (magCap != null) {
-                const ammoSelect = document.getElementById("ammo-select");
+                const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
                 const ammoWeightPerRound = EFTForge.state.ammoWeightMap?.[ammoSelect?.value] ?? 0;
                 displayWeight += ammoWeightPerRound * magCap;
             }
@@ -2851,7 +2851,7 @@ function _renderComboRows(items) {
     const scrollRoot = document.querySelector(".right-panel");
     if (!scrollRoot) return;
     scrollRoot.addEventListener("scroll", () => {
-        const table = document.querySelector(".attachment-table");
+        const table = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
         if (table) table.classList.toggle("header-pinned", scrollRoot.scrollTop > 10);
     }, { passive: true });
     setupEdgePanScroll(scrollRoot);

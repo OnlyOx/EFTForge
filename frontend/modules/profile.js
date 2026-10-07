@@ -41,7 +41,7 @@ function _showAvatarCropModal(file, onConfirm, onCancel) {
     const reader = new FileReader();
     reader.onerror = () => onCancel();
     reader.onload  = e => {
-        const dataUrl = e.target.result;
+        const dataUrl = /** @type {string} */ (e.target.result);
         const img = new Image();
         img.onload  = () => _buildCropModal(img, onConfirm, onCancel);
         img.onerror = () => onCancel();
@@ -90,7 +90,7 @@ function _buildCropModal(img, onConfirm, onCancel) {
         </div>
     `;
 
-    const canvas = document.getElementById("avatar-crop-canvas");
+    const canvas = /** @type {HTMLCanvasElement | null} */ (document.getElementById("avatar-crop-canvas"));
     const ctx    = canvas.getContext("2d");
 
     function draw() {
@@ -288,14 +288,14 @@ function showProfileModal() {
     `;
 
     const avatarWrap        = body.querySelector("#profile-avatar-wrap");
-    const avatarInput       = body.querySelector("#profile-avatar-input");
-    const avatarPreview     = body.querySelector("#profile-avatar-preview");
-    const avatarHint        = body.querySelector(".avatar-hover-hint");
-    const avatarStatus      = body.querySelector("#profile-avatar-status");
+    const avatarInput       = /** @type {HTMLInputElement | null} */ (body.querySelector("#profile-avatar-input"));
+    const avatarPreview     = /** @type {HTMLImageElement | null} */ (body.querySelector("#profile-avatar-preview"));
+    const avatarHint        = /** @type {HTMLElement | null} */ (body.querySelector(".avatar-hover-hint"));
+    const avatarStatus      = /** @type {HTMLElement | null} */ (body.querySelector("#profile-avatar-status"));
     const avatarUsername    = body.querySelector("#profile-avatar-username");
-    const usernameInput     = body.querySelector("#profile-username-input");
-    const usernameHint      = body.querySelector("#profile-username-hint");
-    const saveBtn       = body.querySelector("#profile-modal-save");
+    const usernameInput     = /** @type {HTMLInputElement | null} */ (body.querySelector("#profile-username-input"));
+    const usernameHint      = /** @type {HTMLElement | null} */ (body.querySelector("#profile-username-hint"));
+    const saveBtn       = /** @type {HTMLButtonElement | null} */ (body.querySelector("#profile-modal-save"));
     const closeBtn      = body.querySelector("#profile-modal-close");
 
     let pendingAvatarUrl  = profile.avatar_url || "";
@@ -324,7 +324,7 @@ function showProfileModal() {
                 avatarStatus.style.color = "#888";
                 avatarStatus.style.display = "";
                 const reader = new FileReader();
-                reader.onload = e => { avatarPreview.src = e.target.result; };
+                reader.onload = e => { avatarPreview.src = /** @type {string} */ (e.target.result); };
                 reader.readAsDataURL(croppedFile);
             },
             () => { avatarInput.value = ""; },
@@ -506,9 +506,9 @@ function _showTransferModal() {
         </div>
     `;
 
-    const step1      = body.querySelector("#tr-step-1");
-    const step2      = body.querySelector("#tr-step-2");
-    const uuidInput  = body.querySelector("#tr-uuid-input");
+    const step1      = /** @type {HTMLElement | null} */ (body.querySelector("#tr-step-1"));
+    const step2      = /** @type {HTMLElement | null} */ (body.querySelector("#tr-step-2"));
+    const uuidInput  = /** @type {HTMLInputElement | null} */ (body.querySelector("#tr-uuid-input"));
     const inputError = body.querySelector("#tr-input-error");
     const willBody   = body.querySelector("#tr-will-body");
 
@@ -526,7 +526,7 @@ function _showTransferModal() {
         const val = uuidInput.value.trim();
         if (!val) { inputError.textContent = t("profile.transferNoData"); return; }
 
-        const previewBtn = body.querySelector("#tr-preview-btn");
+        const previewBtn = /** @type {HTMLButtonElement | null} */ (body.querySelector("#tr-preview-btn"));
         previewBtn.disabled = true;
         previewBtn.textContent = t("profile.transferPreviewing");
         inputError.textContent = "";
@@ -567,8 +567,8 @@ function _showTransferModal() {
     });
 
     body.querySelector("#tr-confirm-btn").addEventListener("click", async () => {
-        const confirmBtn = body.querySelector("#tr-confirm-btn");
-        const backBtn    = body.querySelector("#tr-back-btn");
+        const confirmBtn = /** @type {HTMLButtonElement | null} */ (body.querySelector("#tr-confirm-btn"));
+        const backBtn    = /** @type {HTMLButtonElement | null} */ (body.querySelector("#tr-back-btn"));
         confirmBtn.disabled = true;
         backBtn.disabled    = true;
         confirmBtn.textContent = t("profile.transferring");
@@ -609,7 +609,7 @@ function _updateProfileBtn() {
     const btn = document.getElementById("profile-nav-btn");
     if (!btn) return;
     const profile = getProfile();
-    const img = btn.querySelector(".profile-nav-avatar");
+    const img = /** @type {HTMLImageElement | null} */ (btn.querySelector(".profile-nav-avatar"));
     if (img) {
         img.src = proxyAvatarUrl(profile.avatar_url) || "./assets/images/tarkovcitizen.jpg";
     }
@@ -632,7 +632,7 @@ function _setupProfileMarquee() {
 
     btn.addEventListener("mouseenter", async () => {
         const myGen = ++gen;
-        const inner = label.querySelector(".profile-nav-label-text");
+        const inner = /** @type {HTMLElement | null} */ (label.querySelector(".profile-nav-label-text"));
         if (!inner) return;
 
         await new Promise(r => requestAnimationFrame(r));
@@ -687,7 +687,7 @@ function _setupProfileMarquee() {
 
     btn.addEventListener("mouseleave", () => {
         gen++;
-        const inner = label.querySelector(".profile-nav-label-text");
+        const inner = /** @type {HTMLElement | null} */ (label.querySelector(".profile-nav-label-text"));
         if (!inner) return;
         inner.style.transition = "none";
         inner.style.transform = "translateX(0)";

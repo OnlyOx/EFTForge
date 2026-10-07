@@ -78,7 +78,6 @@ window._SLOT_PLACEHOLDER_MAP = _SLOT_PLACEHOLDER_MAP;
 // ============================================================
 
 window._AG_OVERRIDES = {
-    "648ae44056c6310a830fc293@648ae3e356c6310a830fc291": { col: 9, vrow: 2, flexible: true },
     "6981d72ed009ad83920da445@6981d72ed009ad83920da43a": { col: 7, vrow: 1, flexible: true },
     "6981f97f1d2e2070560b727c@6981f97f1d2e2070560b7277": { col: 5, vrow: 2, flexible: true },
     "6a146c81f77fa1814701c173@6a146c81f77fa1814701c172": { col: 6, vrow: 2, flexible: true },
@@ -118,12 +117,10 @@ window._AG_OVERRIDES = {
     "69f9ecc5df2c2358a9041860@69f9ecc5df2c2358a904185c": { col: 9, vrow: -1 },
     "6a15ae3e81a4baf60b09bc37@6a15ae3e81a4baf60b09bc33": { col: 9, vrow: -1 },
     "6a3ce9c28ce058e3a2059b18@6a3ce9c28ce058e3a2059b15": { col: 9, vrow: -1 },
-    "62811fbf09427b40ab14e76b@62811fbf09427b40ab14e767": { col: 9, vrow: -1, flexible: true },
     "62820f043e69a0418a7cb5f7@628120c21d5df4475f46a337": { col: 5, vrow: -2, flexible: true },
     "59bfe68886f7746004266206@59bfe68886f7746004266202": { col: 9, vrow: -1 },
     "5c07a8770db8340023300455@5c07a8770db8340023300450": { col: 9, vrow: -1 },
     "63f5ed14534b2c3d5479a67b@63f5ed14534b2c3d5479a677": { col: 9, vrow: -1 },
-    "6357cd4b6bd1f226843c249f@55d3632e4bdc2d972f8b4569": { col: 3, vrow: 1, flexible: true },
     "55d35e074bdc2d882f8b456c@55d355e64bdc2d962f8b4569": { col: 9, vrow: -1, flexible: true },
     "55f57a5d4bdc2d972b8b4571@55d459824bdc2d892f8b4573": { col: 6, vrow: 1, flexible: true },
     "5648be684bdc2d3d1c8b4582@5644bd2b4bdc2d3b4c8b4572": { col: 7, vrow: 1 },
@@ -844,9 +841,7 @@ window._AG_OVERRIDES = {
     "68c170e383e2d814b0093f89@68c170e383e2d814b0093f87": { col: 4, vrow: 1, flexible: true },
     "68c170e383e2d814b0093f8a@68c170e383e2d814b0093f87": { col: 6, vrow: 1, flexible: true },
     "68c170e383e2d814b0093f8b@68c170e383e2d814b0093f87": { col: 5, vrow: 2, flexible: true },
-    "68c170e383e2d814b0093f8d@68c170e383e2d814b0093f87": { col: 4, vrow: -1 },
     "68c294360f5ebd68290d6c1b@68c294360f5ebd68290d6c16": { col: 9, vrow: -1 },
-    "68c2989dc9061bb2f50478fc@68c2989dc9061bb2f50478f6": { col: 4, vrow: -1 },
     "68caac28f42a4476cf0be2af@68caac28f42a4476cf0be2ac": { col: 6, vrow: 1, flexible: true },
     "68caac28f42a4476cf0be2b0@68caac28f42a4476cf0be2ac": { col: 4, vrow: 1, flexible: true },
     "68caac360bfe742288085e18@68caac360bfe742288085e16": { col: 4, vrow: -1 },
@@ -1543,7 +1538,7 @@ function _buildGridDOM(slotEntries, positions, gunRow, totalRows, container) {
 
         // Unique cell ID for the parent-pulse lookup
         const uid = ++_uidSeq;
-        cell.dataset.cellUid = uid;
+        cell.dataset.cellUid = String(uid);
         // Link this cell to its parent cell (if one exists)
         const parentUid = _nodeToUid.get(parentNode);
         if (parentUid != null) cell.dataset.parentCellUid = parentUid;
@@ -1577,7 +1572,7 @@ function _buildGridDOM(slotEntries, positions, gunRow, totalRows, container) {
     // are correctly distinguished - no item-ID ambiguity.
     let _pulseOverlay = null;
     wrapper.addEventListener("mouseover", e => {
-        const cell = e.target.closest(".ag-cell");
+        const cell = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest(".ag-cell"));
         if (_pulseOverlay) { _pulseOverlay.remove(); _pulseOverlay = null; }
         if (!cell) return;
         const parentCellUid = cell.dataset.parentCellUid;
@@ -1697,8 +1692,8 @@ async function _exportBuildImage() {
         const rowsMatch = gridEl.style.gridTemplateRows.match(/repeat\((\d+)/);
         const GRID_ROWS = rowsMatch ? parseInt(rowsMatch[1]) : 5;
 
-        const gridCells      = [...gridEl.querySelectorAll(".ag-cell")];
-        const gunCell        = gridEl.querySelector("#ag-gun-cell");
+        const gridCells      = [.../** @type {NodeListOf<HTMLElement>} */ (gridEl.querySelectorAll(".ag-cell"))];
+        const gunCell        = /** @type {HTMLElement | null} */ (gridEl.querySelector("#ag-gun-cell"));
         const extrasEl       = gridEl.closest(".attachment-grid-wrapper")?.querySelector(".ag-extras");
         const extraCells     = extrasEl ? [...extrasEl.querySelectorAll(".ag-cell")] : [];
         const filledExtras   = extraCells.filter(c => c.querySelector(".ag-icon"));
@@ -1715,7 +1710,7 @@ async function _exportBuildImage() {
         // Collect attachment icon URLs that go through the backend proxy
         const allExternalSrcs = new Set();
         for (const cell of [...gridCells, ...filledExtras]) {
-            const icon = cell.querySelector(".ag-icon");
+            const icon = /** @type {HTMLImageElement | null} */ (cell.querySelector(".ag-icon"));
             if (icon?.src && icon.src.startsWith("http")) allExternalSrcs.add(icon.src);
         }
 
@@ -1897,7 +1892,7 @@ async function _exportBuildImage() {
 
             for (const row of barRows) {
                 const label   = row.querySelector(".stat-bar-label")?.textContent || "";
-                const fill    = row.querySelector(".stat-bar-fill");
+                const fill    = /** @type {HTMLElement | null} */ (row.querySelector(".stat-bar-fill"));
                 const value   = row.querySelector(".stat-bar-value")?.textContent || "";
                 const pct     = fill ? parseFloat(fill.dataset.target || "0") : 0;
                 const midY    = barY + BAR_ROW_H / 2;
@@ -2012,7 +2007,7 @@ async function _exportBuildImage() {
 
         await new Promise((resolve, reject) => {
             const tmp = new Image();
-            tmp.onload = () => { ctx.drawImage(tmp, 0, 0, IMG_W * SCALE, TOTAL_H * SCALE); resolve(); };
+            tmp.onload = () => { ctx.drawImage(tmp, 0, 0, IMG_W * SCALE, TOTAL_H * SCALE); resolve(undefined); };
             tmp.onerror = reject;
             tmp.src = svgDataUrl;
         });

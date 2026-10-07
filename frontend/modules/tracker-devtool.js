@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * tracker-devtool.js
  *

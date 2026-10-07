@@ -1,4 +1,3 @@
-// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported updateSlotIcon, flashTree, flashConflictInTree, flashConflictSlotInTree, installAttachment,

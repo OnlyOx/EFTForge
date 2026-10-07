@@ -1,4 +1,3 @@
-// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported _clearGunInitCache, gunById, _evictUnusedGunInitCache, _ensureGunInitCached, updateToggleUI,

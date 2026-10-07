@@ -30,7 +30,7 @@ let _headerMaxScroll = 0;
 =========================== */
 
 function renderFilteredGunList(forceReset = false) {
-    const query = document.getElementById("gun-search")?.value.toLowerCase() ?? "";
+    const query = /** @type {HTMLInputElement | null} */ (document.getElementById("gun-search"))?.value.toLowerCase() ?? "";
     const filtered = query
         ? EFTForge.state.allGuns.filter(g => g.name.toLowerCase().includes(query))
         : EFTForge.state.allGuns;
@@ -124,7 +124,7 @@ async function init() {
         const modal = document.querySelector(".modal-overlay");
         if (modal) { modal.remove(); return; }
         clearSearch();
-        document.activeElement.blur();
+        /** @type {HTMLElement} */ (document.activeElement).blur();
         return;
     }
 
@@ -205,7 +205,7 @@ async function init() {
     const langCustom = setupCustomSelect("lang-select");
     if (langCustom) {
         const langTrigger = langCustom.querySelector(".custom-select-trigger");
-        const langList    = langCustom.querySelector(".custom-select-list");
+        const langList    = /** @type {HTMLElement | null} */ (langCustom.querySelector(".custom-select-list"));
         langTrigger.addEventListener("click", () => {
             requestAnimationFrame(() => {
                 if (!langCustom.classList.contains("open")) return;
@@ -242,7 +242,7 @@ function _setHeaderExpanded(expanded) {
     if (_headerAnimating || alreadyExpanded === expanded) return;
 
     _headerAnimating = true;
-    const nav = document.querySelector(".header-nav");
+    const nav = /** @type {HTMLElement | null} */ (document.querySelector(".header-nav"));
     const lang = document.getElementById("lang-switcher");
 
     // Step 1: fade out
@@ -263,7 +263,7 @@ function _setHeaderExpanded(expanded) {
 function _syncHeaderExpand() {
     // Called on navigation changes - immediate state change, no animation
     _headerAnimating = false;
-    const nav = document.querySelector(".header-nav");
+    const nav = /** @type {HTMLElement | null} */ (document.querySelector(".header-nav"));
     const lang = document.getElementById("lang-switcher");
     if (nav)  nav.style.opacity  = "";
     if (lang) lang.style.opacity = "";
@@ -280,7 +280,7 @@ function _syncHeaderScrollOnly() {
     // Re-sync scroll tracking without changing the expanded/collapsed state.
     // Used when returning to gun select so the header stays in whatever state it was.
     _headerAnimating = false;
-    const nav = document.querySelector(".header-nav");
+    const nav = /** @type {HTMLElement | null} */ (document.querySelector(".header-nav"));
     const lang = document.getElementById("lang-switcher");
     if (nav)  nav.style.opacity  = "";
     if (lang) lang.style.opacity = "";
@@ -333,21 +333,21 @@ function _measureHeaderScroll() {
 
 function _updateHeaderFades() {
     const scroll = document.querySelector(".header-scroll");
-    const fadeLeft = document.querySelector(".header-fade-left");
-    const fadeRight = document.querySelector(".header-fade-right");
+    const fadeLeft = /** @type {HTMLElement | null} */ (document.querySelector(".header-fade-left"));
+    const fadeRight = /** @type {HTMLElement | null} */ (document.querySelector(".header-fade-right"));
     if (!scroll || !fadeLeft || !fadeRight) return;
 
     const maxScroll = _headerMaxScroll;
     if (maxScroll <= 1) {
-        fadeLeft.style.opacity = 0;
-        fadeRight.style.opacity = 0;
+        fadeLeft.style.opacity = "0";
+        fadeRight.style.opacity = "0";
         return;
     }
 
     const left = scroll.scrollLeft;
     const right = maxScroll - scroll.scrollLeft;
-    fadeLeft.style.opacity = Math.max(0, Math.min(1, left / HEADER_FADE_DISTANCE));
-    fadeRight.style.opacity = Math.max(0, Math.min(1, right / HEADER_FADE_DISTANCE));
+    fadeLeft.style.opacity = String(Math.max(0, Math.min(1, left / HEADER_FADE_DISTANCE)));
+    fadeRight.style.opacity = String(Math.max(0, Math.min(1, right / HEADER_FADE_DISTANCE)));
 }
 
 function initHeaderFades() {
@@ -385,7 +385,7 @@ function initPanelResizer() {
     if (isMobileLayout()) return;
 
     const resizer   = document.getElementById("panel-resizer");
-    const leftPanel = document.querySelector(".left-panel");
+    const leftPanel = /** @type {HTMLElement | null} */ (document.querySelector(".left-panel"));
     const container = document.getElementById("main-container");
 
     const DEFAULT_WIDTH = 660;
@@ -398,7 +398,7 @@ function initPanelResizer() {
     leftPanel.style.width = initWidth + "px";
     // Auto-correct legacy users whose saved width is below the new minimum
     if (!savedRaw || savedRaw < MIN_LEFT) {
-        localStorage.setItem("eftforge_panel_width", initWidth);
+        localStorage.setItem("eftforge_panel_width", String(initWidth));
     }
 
     let dragging = false;
@@ -427,7 +427,7 @@ function initPanelResizer() {
         resizer.classList.remove("dragging");
         document.body.style.cursor     = "";
         document.body.style.userSelect = "";
-        localStorage.setItem("eftforge_panel_width", leftPanel.offsetWidth);
+        localStorage.setItem("eftforge_panel_width", String(leftPanel.offsetWidth));
     });
 
     let resizeAnimFrame = null;
@@ -448,7 +448,7 @@ function initPanelResizer() {
             leftPanel.style.width = clamped + "px";
             leftPanel.addEventListener("transitionend", () => {
                 leftPanel.style.transition = "";
-                localStorage.setItem("eftforge_panel_width", clamped);
+                localStorage.setItem("eftforge_panel_width", String(clamped));
             }, { once: true });
         });
     });
@@ -628,7 +628,7 @@ async function checkForUpdate() {
         "#4caf50",
         [{ label: _t("toast.updateNow"), onClick: () => {
             const u = new URL(window.location.href);
-            u.searchParams.set("_v", Date.now());
+            u.searchParams.set("_v", String(Date.now()));
             window.location.replace(u);
         }}]
     );
@@ -745,7 +745,7 @@ function mobileWarning() {
     _sb("save-share-btn","btn.saveShareShort");
     _sb("gun-builds-btn","btn.gunBuildsShort");
 
-    const rp = document.querySelector(".right-panel");
+    const rp = /** @type {HTMLElement | null} */ (document.querySelector(".right-panel"));
     if (rp) {
         let _swipeStartY = 0, _swipeTracking = false;
         rp.addEventListener("touchstart", (e) => {
@@ -786,7 +786,7 @@ function mobileWarning() {
 function openMobileRightPanel() {
     if (!isMobileLayout()) return;
     document.body.classList.add("mobile-right-open");
-    const rp = document.querySelector(".right-panel");
+    const rp = /** @type {HTMLElement | null} */ (document.querySelector(".right-panel"));
     if (rp) rp.scrollTop = 0;
 }
 
@@ -897,7 +897,7 @@ function _renderAboutKitbash(kb) {
         ver.textContent = `${kb.commit.slice(0, 7)}${codename} - ${kb.date.slice(0, 10)}`;
         // The release's own wordmark (assets/images/kitbash-wordmark-<codename>.png), else
         // the plain one.
-        const mark = document.getElementById("about-kitbash-wordmark");
+        const mark = /** @type {HTMLImageElement | null} */ (document.getElementById("about-kitbash-wordmark"));
         if (mark && typeof kb.codename === "string" && /^[a-z0-9-]+$/i.test(kb.codename)) {
             mark.onerror = () => { mark.onerror = null; mark.src = "./assets/images/kitbash-for-eftforge-wordmark.png"; };
             mark.src = `./assets/images/kitbash-wordmark-${kb.codename.toLowerCase()}.png`;
@@ -1069,7 +1069,7 @@ function showAboutDialog() {
 
     document.getElementById("about-check-update-btn").addEventListener("click", async function () {
         const { t: _t } = EFTForge.lang;
-        const btn    = this;
+        const btn    = /** @type {HTMLButtonElement} */ (this);
         const status = document.getElementById("about-update-status");
         btn.disabled = true;
         btn.textContent = _t("about.checking");
@@ -1128,7 +1128,7 @@ function showAboutDialog() {
         btn.textContent = _t("about.updateNow");
         btn.addEventListener("click", () => {
             const u = new URL(window.location.href);
-            u.searchParams.set("_v", Date.now());
+            u.searchParams.set("_v", String(Date.now()));
             window.location.replace(u);
         }, { once: true });
     });
@@ -1139,7 +1139,7 @@ function showAboutDialog() {
 =========================== */
 
 function setupCustomSelect(selectId) {
-    const sel = document.getElementById(selectId);
+    const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById(selectId));
     if (!sel) return null;
 
     // The hidden native select would otherwise remain an invisible tab stop
@@ -1170,7 +1170,7 @@ function setupCustomSelect(selectId) {
         if (selected) {
             trigger.appendChild(document.createTextNode(selected.textContent));
         }
-        list.querySelectorAll(".custom-select-option").forEach(item => {
+        /** @type {NodeListOf<HTMLElement>} */ (list.querySelectorAll(".custom-select-option")).forEach(item => {
             item.classList.toggle("selected", item.dataset.value === sel.value);
         });
     }
@@ -1182,7 +1182,7 @@ function setupCustomSelect(selectId) {
             const item = document.createElement("div");
             item.className = "custom-select-option" + (opt.selected ? " selected" : "");
             item.dataset.value = opt.value;
-            item.style.setProperty("--i", i);
+            item.style.setProperty("--i", String(i));
             const text = document.createElement("span");
             text.className = "marquee-text";
             text.appendChild(document.createTextNode(opt.textContent));
@@ -1259,8 +1259,8 @@ function applyStaticTranslations() {
 
     document.title = EFTForge.state.lang === "zh" ? "EFTForge - 配置实验室" : "EFTForge - Forge Your Meta";
 
-    const beianFooter = document.querySelector(".beian-footer:not(.copyright-footer)");
-    const copyrightFooter = document.querySelector(".copyright-footer");
+    const beianFooter = /** @type {HTMLElement | null} */ (document.querySelector(".beian-footer:not(.copyright-footer)"));
+    const copyrightFooter = /** @type {HTMLElement | null} */ (document.querySelector(".copyright-footer"));
     const isDev = ["localhost", "127.0.0.1"].includes(location.hostname);
     const isZh = EFTForge.state.lang === "zh";
     const showBeian = !isDev && isZh;
@@ -1268,7 +1268,7 @@ function applyStaticTranslations() {
     if (copyrightFooter) copyrightFooter.style.display = showBeian ? "none" : "";
 
     // Sync lang select value and update the custom trigger
-    const langSelect = document.getElementById("lang-select");
+    const langSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("lang-select"));
     if (langSelect) {
         langSelect.value = EFTForge.state.lang;
         langSelect.dispatchEvent(new Event("input"));
@@ -1307,7 +1307,7 @@ function applyStaticTranslations() {
     if (classBtn)    classBtn.textContent    = t("btn.class");
 
     // Gun search placeholder
-    const gunSearch = document.getElementById("gun-search");
+    const gunSearch = /** @type {HTMLInputElement | null} */ (document.getElementById("gun-search"));
     if (gunSearch) gunSearch.placeholder = t("placeholder.gunSearch");
 
     // Left-build-area buttons
@@ -1336,7 +1336,8 @@ function applyStaticTranslations() {
 // useCapture=true catches load events from all img elements, including those
 // injected via innerHTML after this listener is registered.
 document.addEventListener("load", e => {
-    if (e.target.tagName === "IMG") e.target.classList.add("loaded");
+    const target = /** @type {Element} */ (e.target);
+    if (target.tagName === "IMG") target.classList.add("loaded");
 }, true);
 
 async function switchLang(lang) {
@@ -1510,12 +1511,12 @@ async function switchLang(lang) {
     }, { passive: true });
 
     document.addEventListener("mouseover", (e) => {
-        let target = e.target.closest("[data-tooltip], [data-tooltip-html]");
+        let target = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest("[data-tooltip], [data-tooltip-html]"));
 
         // Convert native title attributes to data-tooltip on first hover so
         // the browser never shows its default tooltip (e.g. from markdown content)
         if (!target) {
-            const titled = e.target.closest("[title]");
+            const titled = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest("[title]"));
             if (titled) {
                 const text = titled.getAttribute("title");
                 if (text) {
@@ -1574,7 +1575,7 @@ async function switchLang(lang) {
 
         // Click-to-copy delegation for item ID badges
         document.addEventListener("click", (e) => {
-            const badge = e.target.closest(".dev-item-id-badge");
+            const badge = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest(".dev-item-id-badge"));
             if (!badge) return;
             e.stopPropagation();
             const id = badge.dataset.id;
@@ -1682,7 +1683,7 @@ async function switchLang(lang) {
     }
 
     function _bindDebugger(btnId, outputId, runFn) {
-        const btn = document.getElementById(btnId);
+        const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById(btnId));
         const out = document.getElementById(outputId);
         if (!btn || !out) return;
         btn.addEventListener("click", () => {
@@ -1701,7 +1702,7 @@ async function switchLang(lang) {
     const _OVERLAP_STORAGE_KEY = "eftforge_overlap_scan_result";
 
     function _bindGridOverlapScanner(btnId, outputId) {
-        const btn = document.getElementById(btnId);
+        const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById(btnId));
         const out = document.getElementById(outputId);
         if (!btn || !out) return;
 
@@ -2053,10 +2054,10 @@ async function switchLang(lang) {
             const status = capture?.getStatus();
             document.getElementById('dev-capture-status').textContent = status
                 ? `${status.mode} · ${status.changes} active edit(s)` : 'Unavailable';
-            const start = document.getElementById('dev-capture-start');
+            const start = /** @type {HTMLButtonElement | null} */ (document.getElementById('dev-capture-start'));
             start.textContent = status?.mode === 'idle' ? 'START' : 'RESUME';
             start.disabled = !capture;
-            document.getElementById('dev-capture-restore').disabled = !status?.changes;
+            /** @type {HTMLButtonElement} */ (document.getElementById('dev-capture-restore')).disabled = !status?.changes;
         }
         updateCaptureStatus();
         document.getElementById('dev-capture-start').addEventListener('click', () => capture?.start());
@@ -2097,7 +2098,7 @@ async function switchLang(lang) {
             this.textContent = newVal ? "ON" : "OFF";
             this.classList.toggle("active", newVal);
             if (newVal) {
-                document.querySelectorAll("#attachment-body tr[data-item-id]").forEach(tr => {
+                /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("#attachment-body tr[data-item-id]")).forEach(tr => {
                     if (tr.querySelector(".dev-item-id-badge")) return;
                     const nameText = tr.querySelector(".attachment-name-text");
                     if (!nameText) return;
@@ -2157,7 +2158,7 @@ async function switchLang(lang) {
         const _lsList = document.getElementById("dev-ls-list");
         const _lsRefreshBtn = document.getElementById("dev-ls-refresh-btn");
         const _lsToggleBtn = document.getElementById("dev-ls-toggle-btn");
-        const _lsSearch = document.getElementById("dev-ls-search");
+        const _lsSearch = /** @type {HTMLInputElement | null} */ (document.getElementById("dev-ls-search"));
         let _lsExpanded = false;
 
         _lsToggleBtn.addEventListener("click", () => {
@@ -2177,9 +2178,9 @@ async function switchLang(lang) {
         });
 
         _lsList.addEventListener("click", e => {
-            const btn = e.target.closest(".dev-ls-clear-btn");
+            const btn = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest(".dev-ls-clear-btn"));
             if (!btn) return;
-            const row = btn.closest(".dev-ls-row");
+            const row = /** @type {HTMLElement | null} */ (btn.closest(".dev-ls-row"));
             const key = row?.dataset.key;
             if (!key) return;
             localStorage.removeItem(key);

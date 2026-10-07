@@ -259,7 +259,7 @@ window.EFTForge.optimizer = (function () {
         document.querySelector(`[data-section-toggle="${id}"]`)?.addEventListener('click', () => _toggleSection(id));
         document.querySelector(`[data-section-reset="${id}"]`)?.addEventListener('click', (ev) => {
             ev.stopPropagation();
-            const btn = ev.currentTarget;
+            const btn = /** @type {HTMLElement} */ (ev.currentTarget);
             btn.classList.remove('reset-pulse');
             void btn.offsetWidth; // restart the animation on rapid repeat clicks
             btn.classList.add('reset-pulse');
@@ -307,7 +307,7 @@ window.EFTForge.optimizer = (function () {
         // in styles.css.
         document.getElementById('optimizer-edge-tab')?.classList.add('optimizer-edge-tab-drawer-open');
         document.getElementById('main-container')?.setAttribute('inert', '');
-        if (document.activeElement) document.activeElement.blur();
+        if (document.activeElement) /** @type {HTMLElement} */ (document.activeElement).blur();
 
         // Keep the last solved build on screen across a close/reopen of the drawer,
         // but only for the gun it was actually solved for - reopening on a different
@@ -615,13 +615,13 @@ window.EFTForge.optimizer = (function () {
         if (!el) return;
         el.innerHTML = _customPresetRowHtml();
 
-        el.querySelectorAll('[data-preset-apply]').forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (el.querySelectorAll('[data-preset-apply]')).forEach(btn => {
             btn.addEventListener('click', () => {
                 const preset = _customPresets.find(p => p.id === btn.dataset.presetApply);
                 if (preset) _setWeights(preset.ergo, preset.recoil, preset.price);
             });
         });
-        el.querySelectorAll('[data-preset-delete]').forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (el.querySelectorAll('[data-preset-delete]')).forEach(btn => {
             btn.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 _confirmDeletePreset(btn, btn.dataset.presetDelete);
@@ -650,7 +650,7 @@ window.EFTForge.optimizer = (function () {
         }
         row.classList.add('open');
         row.innerHTML = _presetAddFormHtml();
-        const input = document.getElementById('optimizer-preset-name-input');
+        const input = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-preset-name-input'));
         input.focus();
         input.addEventListener('keydown', (ev) => {
             if (ev.key === 'Enter') _confirmAddPreset();
@@ -661,7 +661,7 @@ window.EFTForge.optimizer = (function () {
     }
 
     function _confirmAddPreset() {
-        const input = document.getElementById('optimizer-preset-name-input');
+        const input = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-preset-name-input'));
         const name = input.value.trim().slice(0, 30);
         if (!name) {
             input.focus();
@@ -701,7 +701,7 @@ window.EFTForge.optimizer = (function () {
         const row = document.getElementById('optimizer-filter-preset-row');
         if (!row) return;
         const empty = !_includedModIds.length && !_excludedModIds.length;
-        const saveButton = document.getElementById('optimizer-filter-preset-add-confirm');
+        const saveButton = /** @type {HTMLButtonElement | null} */ (document.getElementById('optimizer-filter-preset-add-confirm'));
         if (saveButton) saveButton.disabled = empty;
         row.innerHTML = _filterPresets.map(p => `
             <div class="optimizer-preset-custom-item">
@@ -709,7 +709,7 @@ window.EFTForge.optimizer = (function () {
                 <button type="button" class="optimizer-preset-delete-btn" data-filter-preset-delete="${_escape(p.id)}" data-tooltip="${_escape(_t('optimizer.presetDeleteTitle'))}">&#x2715;</button>
             </div>`).join('') + `<button type="button" class="optimizer-preset-btn" data-filter-preset-add ${empty ? 'disabled' : ''} title="${_escape(_t(empty ? 'optimizer.filterPreset.empty' : 'optimizer.filterPreset.save'))}">${_t('optimizer.filterPreset.create')}</button>`
             + (empty ? '' : `<button type="button" class="optimizer-preset-btn" data-filter-clear>${_t('optimizer.clearFilters')}</button>`);
-        row.querySelectorAll('[data-filter-preset-apply]').forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (row.querySelectorAll('[data-filter-preset-apply]')).forEach(btn => {
             // Assign rich markup through the DOM, like the combo price breakdown.
             const preset = _filterPresets.find(p => p.id === btn.dataset.filterPresetApply);
             if (preset) btn.dataset.tooltipHtml = _filterPresetTooltipHtml(preset);
@@ -746,7 +746,7 @@ window.EFTForge.optimizer = (function () {
                 _refreshExpandedPicker();
             });
         });
-        row.querySelectorAll('[data-filter-preset-delete]').forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (row.querySelectorAll('[data-filter-preset-delete]')).forEach(btn => {
             btn.addEventListener('click', () => _confirmDeletePreset(btn, btn.dataset.filterPresetDelete, () => {
                 _filterPresets = _filterPresets.filter(p => p.id !== btn.dataset.filterPresetDelete);
                 _saveFilterPresets();
@@ -824,8 +824,8 @@ window.EFTForge.optimizer = (function () {
         const point = document.getElementById('optimizer-tp-point');
         if (point) {
             const svgPos = _tpToSvg(_ergoWeight, _recoilWeight, _priceWeight);
-            point.setAttribute('cx', svgPos.x);
-            point.setAttribute('cy', svgPos.y);
+            point.setAttribute('cx', String(svgPos.x));
+            point.setAttribute('cy', String(svgPos.y));
         }
         const pctErgoEl = document.getElementById('optimizer-tp-pct-ergo');
         const pctRecoilEl = document.getElementById('optimizer-tp-pct-recoil');
@@ -834,12 +834,12 @@ window.EFTForge.optimizer = (function () {
         if (pctRecoilEl) pctRecoilEl.textContent = `${pctRecoil}%`;
         if (pctPriceEl) pctPriceEl.textContent = `${pctPrice}%`;
 
-        const ergoSlider = document.getElementById('optimizer-ergo-weight');
-        const recoilSlider = document.getElementById('optimizer-recoil-weight');
-        const priceSlider = document.getElementById('optimizer-price-weight');
-        if (ergoSlider) ergoSlider.value = _ergoWeight;
-        if (recoilSlider) recoilSlider.value = _recoilWeight;
-        if (priceSlider) priceSlider.value = _priceWeight;
+        const ergoSlider = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-ergo-weight'));
+        const recoilSlider = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-recoil-weight'));
+        const priceSlider = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-price-weight'));
+        if (ergoSlider) ergoSlider.value = String(_ergoWeight);
+        if (recoilSlider) recoilSlider.value = String(_recoilWeight);
+        if (priceSlider) priceSlider.value = String(_priceWeight);
         const ergoLabel = document.getElementById('optimizer-ergo-weight-label');
         const recoilLabel = document.getElementById('optimizer-recoil-weight-label');
         const priceLabel = document.getElementById('optimizer-price-weight-label');
@@ -918,9 +918,9 @@ window.EFTForge.optimizer = (function () {
         el.innerHTML = _weightWidgetHtml();
 
         if (_weightUiMode === 'sliders') {
-            document.getElementById('optimizer-ergo-weight').addEventListener('input', (e) => _setWeights(Number(e.target.value), _recoilWeight, _priceWeight));
-            document.getElementById('optimizer-recoil-weight').addEventListener('input', (e) => _setWeights(_ergoWeight, Number(e.target.value), _priceWeight));
-            document.getElementById('optimizer-price-weight').addEventListener('input', (e) => _setWeights(_ergoWeight, _recoilWeight, Number(e.target.value)));
+            document.getElementById('optimizer-ergo-weight').addEventListener('input', (e) => _setWeights(Number(/** @type {HTMLInputElement} */ (e.target).value), _recoilWeight, _priceWeight));
+            document.getElementById('optimizer-recoil-weight').addEventListener('input', (e) => _setWeights(_ergoWeight, Number(/** @type {HTMLInputElement} */ (e.target).value), _priceWeight));
+            document.getElementById('optimizer-price-weight').addEventListener('input', (e) => _setWeights(_ergoWeight, _recoilWeight, Number(/** @type {HTMLInputElement} */ (e.target).value)));
         } else {
             document.getElementById('optimizer-tp-svg')?.addEventListener('mousedown', _tpHandleMouseDown);
         }
@@ -1188,12 +1188,12 @@ window.EFTForge.optimizer = (function () {
         // keystroke stalls the main thread while typing - debounce it instead.
         let searchDebounce = null;
         document.getElementById('mf-cat-search').addEventListener('input', (e) => {
-            _modSearch = e.target.value;
+            _modSearch = /** @type {HTMLInputElement} */ (e.target).value;
             clearTimeout(searchDebounce);
             searchDebounce = setTimeout(renderResults, 120);
         });
         document.getElementById('mf-cat-select').addEventListener('change', (e) => {
-            _modCategoryFilter = e.target.value;
+            _modCategoryFilter = /** @type {HTMLSelectElement} */ (e.target).value;
             renderResults();
         });
         if (typeof setupCustomSelect === 'function') setupCustomSelect('mf-cat-select');
@@ -1236,7 +1236,7 @@ window.EFTForge.optimizer = (function () {
             </div>
         `;
 
-        el.querySelectorAll('[data-remove-id]').forEach(tag => tag.addEventListener('click', () => {
+        /** @type {NodeListOf<HTMLElement>} */ (el.querySelectorAll('[data-remove-id]')).forEach(tag => tag.addEventListener('click', () => {
             window.EFTForge.tooltip?.hide();
             const id = tag.dataset.removeId;
             _includedModIds = _includedModIds.filter(m => m !== id);
@@ -1671,10 +1671,10 @@ window.EFTForge.optimizer = (function () {
         }
         const row = document.querySelector('[data-constraint-slider="ergoRange"]');
         if (!row) return;
-        row.querySelector('input[data-ergo-range="min"]').value = state.min;
-        row.querySelector('input[data-ergo-range-input="min"]').value = state.min;
-        row.querySelector('input[data-ergo-range="max"]').value = state.max;
-        row.querySelector('input[data-ergo-range-input="max"]').value = state.max;
+        /** @type {HTMLInputElement} */ (row.querySelector('input[data-ergo-range="min"]')).value = String(state.min);
+        /** @type {HTMLInputElement} */ (row.querySelector('input[data-ergo-range-input="min"]')).value = String(state.min);
+        /** @type {HTMLInputElement} */ (row.querySelector('input[data-ergo-range="max"]')).value = String(state.max);
+        /** @type {HTMLInputElement} */ (row.querySelector('input[data-ergo-range-input="max"]')).value = String(state.max);
         _updateErgoRangeFill(row.querySelector('[data-ergo-range-track]'));
     }
 
@@ -2116,7 +2116,7 @@ window.EFTForge.optimizer = (function () {
         document.getElementById('optimizer-flea-toggle').addEventListener('click', () => _setFleaAvailable(!_fleaAvailable));
         document.getElementById('optimizer-unpriced-toggle').addEventListener('click', () => _setAllowUnpriced(!_allowUnpriced));
         document.getElementById('optimizer-price-mode-btns')?.addEventListener('click', (e) => {
-            const btn = e.target.closest('.toggle-btn');
+            const btn = /** @type {Element} */ (e.target).closest('.toggle-btn');
             if (!btn) return;
             const mode = btn.id === 'optimizer-price-mode-pve' ? 'pve'
                 : btn.id === 'optimizer-price-mode-pvpseason' ? 'pvpSeason'
@@ -2137,7 +2137,7 @@ window.EFTForge.optimizer = (function () {
     async function _solveOptimize() {
         if (_solving) return;
         if (_activeTab === 'explore') {
-            const invalid = document.querySelector('.optimizer-config-pane input:invalid');
+            const invalid = /** @type {HTMLInputElement | null} */ (document.querySelector('.optimizer-config-pane input:invalid'));
             if (invalid) { invalid.reportValidity(); return; }
         }
         const weaponId = window.EFTForge.state?.currentGun?.id;
@@ -2164,8 +2164,8 @@ window.EFTForge.optimizer = (function () {
         _applyDefaultModBans();
 
         const state = window.EFTForge.state || {};
-        const ammoSelect = document.getElementById('ammo-select');
-        const ubglAmmoSelect = document.getElementById('ubgl-ammo-select');
+        const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById('ammo-select'));
+        const ubglAmmoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById('ubgl-ammo-select'));
         const body = {
             weapon_id: weaponId,
             use_true_ergo: _useTrueErgo,
@@ -2227,7 +2227,7 @@ window.EFTForge.optimizer = (function () {
     function _renderExploreControls() {
         const pane = document.querySelector('.optimizer-config-pane');
         if (!pane) return;
-        const weightSection = pane.querySelector('[data-section="weight"]');
+        const weightSection = /** @type {HTMLElement | null} */ (pane.querySelector('[data-section="weight"]'));
         weightSection.hidden = true;
         const controls = document.createElement('div');
         controls.className = 'optimizer-result optimizer-explore-controls';
@@ -2261,14 +2261,14 @@ window.EFTForge.optimizer = (function () {
         }
         setupCustomSelect('optimizer-explore-axis');
         document.getElementById('optimizer-explore-axis').addEventListener('change', e => {
-            _exploreTradeoff = e.target.value;
+            _exploreTradeoff = /** @type {HTMLSelectElement} */ (e.target).value;
         });
-        const range = document.getElementById('optimizer-explore-steps');
-        const number = document.getElementById('optimizer-explore-steps-number');
+        const range = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-explore-steps'));
+        const number = /** @type {HTMLInputElement | null} */ (document.getElementById('optimizer-explore-steps-number'));
         const syncSteps = e => {
             if (!e.target.checkValidity() || e.target.value === '') return;
             _exploreSteps = Number(e.target.value);
-            range.value = number.value = _exploreSteps;
+            range.value = number.value = String(_exploreSteps);
         };
         range.addEventListener('input', syncSteps);
         number.addEventListener('input', syncSteps);
@@ -2594,20 +2594,20 @@ window.EFTForge.optimizer = (function () {
             _renderResult();
         };
         _exploreSelectPointFn = selectPoint;
-        chart.querySelectorAll('[data-point]').forEach(el => {
+        /** @type {NodeListOf<HTMLElement>} */ (chart.querySelectorAll('[data-point]')).forEach(el => {
             el.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     const index = Number(el.dataset.point);
                     selectPoint(index);
-                    _resultsContainer()?.querySelector(`[data-point="${index}"]`)?.focus();
+                    /** @type {HTMLElement | null} */ (_resultsContainer()?.querySelector(`[data-point="${index}"]`))?.focus();
                 }
             });
         });
         setupCustomSelect('optimizer-explore-point');
         document.getElementById('optimizer-explore-point').addEventListener('change', e => {
-            selectPoint(Number(e.target.value));
-            document.querySelector('#optimizer-explore-point-custom .custom-select-trigger')?.focus();
+            selectPoint(Number(/** @type {HTMLSelectElement} */ (e.target).value));
+            /** @type {HTMLElement | null} */ (document.querySelector('#optimizer-explore-point-custom .custom-select-trigger'))?.focus();
         });
         _wireExploreChartZoom(chart, ctx);
     }
@@ -2832,7 +2832,7 @@ window.EFTForge.optimizer = (function () {
                 // A plain click (no drag) - forward to the point under the cursor,
                 // same as a native click would, since preventDefault on this
                 // mousedown suppresses the browser's own click event.
-                const hit = e.target.closest?.('.optimizer-explore-point-hit');
+                const hit = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest?.('.optimizer-explore-point-hit'));
                 if (hit && chart.contains(hit)) _exploreSelectPointFn?.(Number(hit.dataset.point));
                 return;
             }
@@ -3050,7 +3050,7 @@ window.EFTForge.optimizer = (function () {
         if (phaseEl) phaseEl.textContent = _solveProgressLabel();
         const detailEl = document.querySelector('.optimizer-solve-detail');
         if (detailEl) detailEl.textContent = _solveProgressDetail();
-        const cancelBtn = document.getElementById('optimizer-cancel-btn');
+        const cancelBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('optimizer-cancel-btn'));
         if (cancelBtn) cancelBtn.disabled = true;
 
         // FADE_MS matches the .discarded opacity transition in styles.css. Squeeze
@@ -3118,19 +3118,19 @@ window.EFTForge.optimizer = (function () {
             <div id="optimizer-result-container"></div>
         `;
 
-        const select = document.getElementById('optimizer-gunsmith-task');
+        const select = /** @type {HTMLSelectElement | null} */ (document.getElementById('optimizer-gunsmith-task'));
         select.addEventListener('change', () => _renderGunsmithTaskInfo(tasks));
         _renderGunsmithTaskInfo(tasks);
 
         document.getElementById('optimizer-gunsmith-flea-available').addEventListener('click', (e) => {
-            e.currentTarget.classList.toggle('active');
+            /** @type {HTMLElement} */ (e.currentTarget).classList.toggle('active');
         });
         document.getElementById('optimizer-gunsmith-solve-btn').addEventListener('click', _solveGunsmith);
         _renderResult();
     }
 
     function _renderGunsmithTaskInfo(tasks) {
-        const select = document.getElementById('optimizer-gunsmith-task');
+        const select = /** @type {HTMLSelectElement | null} */ (document.getElementById('optimizer-gunsmith-task'));
         const info = document.getElementById('optimizer-gunsmith-info');
         if (!select || !info) return;
         const task = tasks.find(t => t.task_name === select.value);
@@ -3159,7 +3159,7 @@ window.EFTForge.optimizer = (function () {
     }
 
     async function _solveGunsmith() {
-        const select = document.getElementById('optimizer-gunsmith-task');
+        const select = /** @type {HTMLSelectElement | null} */ (document.getElementById('optimizer-gunsmith-task'));
         const taskName = select?.value;
         if (!taskName) return;
 
@@ -3207,7 +3207,7 @@ window.EFTForge.optimizer = (function () {
             };
             const id = setTimeout(() => {
                 signal.removeEventListener('abort', onAbort);
-                resolve();
+                resolve(undefined);
             }, ms);
             signal.addEventListener('abort', onAbort, { once: true });
         });
@@ -3448,7 +3448,7 @@ window.EFTForge.optimizer = (function () {
         const gen = ++_resultImgGen;
         _resultImgAbort?.abort();
         _resultImgAbort = null;
-        const imgEl = document.getElementById('optimizer-result-gun-img');
+        const imgEl = /** @type {HTMLImageElement | null} */ (document.getElementById('optimizer-result-gun-img'));
         if (!imgEl || !_result) return;
         const gun = _gunForResult();
         if (!gun) return;
@@ -3881,7 +3881,7 @@ window.EFTForge.optimizer = (function () {
     // Firing that on every progress tick would queue a render request per sampled
     // point, up to ~80 for one sweep.
     function _setPreviewGunImage(build) {
-        const imgEl = document.getElementById('optimizer-result-gun-img');
+        const imgEl = /** @type {HTMLImageElement | null} */ (document.getElementById('optimizer-result-gun-img'));
         const gun = _gunForResult();
         if (!imgEl || !gun) return;
         const pairs = build?.slot_pairs || [];
@@ -4041,7 +4041,7 @@ window.EFTForge.optimizer = (function () {
         // Re-optimize).
         if (_activeTab === 'explore' && !_solving) _renderExploreChart(existingChart);
         for (const id of ['optimizer-tab-optimize', 'optimizer-tab-explore', 'optimizer-tab-gunsmith']) {
-            const button = document.getElementById(id);
+            const button = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
             if (button) button.disabled = _solving;
         }
         const configPane = document.querySelector('.optimizer-config-pane');
@@ -4226,9 +4226,9 @@ window.EFTForge.optimizer = (function () {
     function _wireManifestButtons() {
         const body = document.getElementById('optimizer-manifest-body');
         if (!body) return;
-        body.querySelectorAll('[data-lock-id]').forEach(btn =>
+        /** @type {NodeListOf<HTMLElement>} */ (body.querySelectorAll('[data-lock-id]')).forEach(btn =>
             btn.addEventListener('click', () => _toggleManifestLock(btn.dataset.lockId)));
-        body.querySelectorAll('[data-ban-id]').forEach(btn =>
+        /** @type {NodeListOf<HTMLElement>} */ (body.querySelectorAll('[data-ban-id]')).forEach(btn =>
             btn.addEventListener('click', () => _toggleManifestBan(btn.dataset.banId)));
     }
 
@@ -4263,9 +4263,9 @@ window.EFTForge.optimizer = (function () {
     // section's tags/reset) needs to call this too, or the icons go stale until the
     // next re-optimize re-renders the whole table.
     function _syncManifestIcons() {
-        document.querySelectorAll('#optimizer-manifest-body [data-lock-id]').forEach(b =>
+        /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#optimizer-manifest-body [data-lock-id]')).forEach(b =>
             b.classList.toggle('active', _includedModIds.includes(b.dataset.lockId)));
-        document.querySelectorAll('#optimizer-manifest-body [data-ban-id]').forEach(b =>
+        /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#optimizer-manifest-body [data-ban-id]')).forEach(b =>
             b.classList.toggle('active', _excludedModIds.includes(b.dataset.banId)));
     }
 

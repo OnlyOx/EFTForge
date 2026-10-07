@@ -1,4 +1,3 @@
-// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported fetchGraphSearchableItems -- called from other modules */

@@ -4,7 +4,7 @@
 // Every script shares one global scope, so a top-level function in one file is
 // already visible to the checker in every other file. Only names reached through
 // `window.` or the EFTForge namespace need declaring here. When a script hangs a new
-// name on either, add it below, or files that use it with // @ts-check will fail.
+// name on either, add it below, or `npm run typecheck` will fail where it is used.
 //
 // Each script starts from `window.EFTForge = window.EFTForge || {}` and adds its own
 // member, so all of them are optional. They are `any` for now; give one a real type

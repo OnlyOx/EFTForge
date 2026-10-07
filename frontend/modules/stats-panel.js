@@ -164,7 +164,7 @@ let _traderLevelsOpen = false;
 const _TRADER_LEVEL_WHITELIST = ["prapor", "skier", "peacekeeper", "mechanic", "jaeger"];
 
 function _startRefetchAnimation() {
-    const btn = document.getElementById("flea-refetch-btn");
+    const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById("flea-refetch-btn"));
     if (!btn) return;
     btn.disabled = true;
     const { t } = EFTForge.lang;
@@ -180,7 +180,7 @@ function _startRefetchAnimation() {
 function _stopRefetchAnimation() {
     clearInterval(_fleaDotsInterval);
     _fleaDotsInterval = null;
-    const btn = document.getElementById("flea-refetch-btn");
+    const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById("flea-refetch-btn"));
     if (!btn) return;
     btn.disabled = false;
     const { t } = EFTForge.lang;
@@ -283,8 +283,8 @@ async function renderPriceOverview() {
     }
 
     const installedItems = _collectInstalledItemsFlat(EFTForge.state.buildTree);
-    const ammoSelect = document.getElementById("ammo-select");
-    const ubglAmmoSelect = document.getElementById("ubgl-ammo-select");
+    const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
+    const ubglAmmoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"));
     const selectedAmmoId = ammoSelect?.value || null;
     const selectedUbglAmmoId = ubglAmmoSelect?.value || null;
     const ammo = selectedAmmoId ? EFTForge.state.ammoMap[selectedAmmoId] : null;
@@ -524,7 +524,7 @@ async function renderPriceOverview() {
     `;
 
     document.getElementById("price-mode-btns")?.addEventListener("click", (e) => {
-        const btn = e.target.closest(".toggle-btn");
+        const btn = /** @type {Element} */ (e.target).closest(".toggle-btn");
         if (!btn) return;
         const mode = btn.id === "price-mode-pve" ? "pve" : btn.id === "price-mode-pvpseason" ? "pvpSeason" : "pvp";
         if (mode === EFTForge.state.priceMode) return;
@@ -810,7 +810,7 @@ async function refreshBuildStats() {
 
   const attachmentIds = collectAttachmentIds(EFTForge.state.buildTree);
 
-  const ammoSelect = document.getElementById("ammo-select");
+  const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
   const assumeFull = EFTForge.state.assumeFullMag ?? true;
   const selectedAmmo = ammoSelect ? ammoSelect.value : null;
   const strengthLevel = EFTForge.state.currentStrengthLevel;
@@ -827,7 +827,7 @@ async function refreshBuildStats() {
       return null;
   }
 
-  const ubglAmmoSelect = document.getElementById("ubgl-ammo-select");
+  const ubglAmmoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"));
   const selectedUbglAmmo = ubglAmmoSelect ? ubglAmmoSelect.value : null;
 
   try {
@@ -906,7 +906,7 @@ async function updateStatsPanel(data, { preloadedAmmo = null, preloadedUbglAmmo 
       .addEventListener("change", () => {
         const caliber = EFTForge.state.currentGun?.caliber;
         if (caliber) {
-          const sel = document.getElementById("ammo-select");
+          const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
           const prefs = JSON.parse(localStorage.getItem("eftforge_ammo_prefs") || "{}");
           prefs[caliber] = sel.value;
           localStorage.setItem("eftforge_ammo_prefs", JSON.stringify(prefs));
@@ -921,7 +921,7 @@ async function updateStatsPanel(data, { preloadedAmmo = null, preloadedUbglAmmo 
       .addEventListener("change", () => {
         const ubglItem = detectInstalledUbgl();
         if (ubglItem?.caliber) {
-          const sel = document.getElementById("ubgl-ammo-select");
+          const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"));
           const prefs = JSON.parse(localStorage.getItem("eftforge_ubgl_ammo_prefs") || "{}");
           prefs[ubglItem.caliber] = sel.value;
           localStorage.setItem("eftforge_ubgl_ammo_prefs", JSON.stringify(prefs));
@@ -977,7 +977,7 @@ async function updateStatsPanel(data, { preloadedAmmo = null, preloadedUbglAmmo 
   const aimSway = parseFloat(data.aim_sway ?? 0);
 
   // Snapshot current fill widths so the transition starts from the previous value
-  const prevFills = content.querySelectorAll(".stat-bar-fill");
+  const prevFills = /** @type {NodeListOf<HTMLElement>} */ (content.querySelectorAll(".stat-bar-fill"));
   const isFirstRender = prevFills.length === 0;
   const prevErgoW = prevFills[0]?.style.width || "0%";
   const prevRVW   = prevFills[1]?.style.width || "0%";
@@ -1107,7 +1107,7 @@ async function updateStatsPanel(data, { preloadedAmmo = null, preloadedUbglAmmo 
 
   // Animate stat bar fills from 0 to their target widths
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    content.querySelectorAll(".stat-bar-fill[data-target]").forEach(el => {
+    /** @type {NodeListOf<HTMLElement>} */ (content.querySelectorAll(".stat-bar-fill[data-target]")).forEach(el => {
       el.style.width = el.dataset.target + "%";
     });
   }));
@@ -1217,8 +1217,8 @@ async function updateStatsPanel(data, { preloadedAmmo = null, preloadedUbglAmmo 
 }
 
 function wireStrengthControls() {
-    const slider = document.getElementById("strength-slider");
-    const numInput = document.getElementById("strength-input");
+    const slider = /** @type {HTMLInputElement | null} */ (document.getElementById("strength-slider"));
+    const numInput = /** @type {HTMLInputElement | null} */ (document.getElementById("strength-input"));
     if (!slider || !numInput) return;
 
     // Use "input" only to update the label and number box live while dragging
@@ -1249,9 +1249,9 @@ function wireStrengthControls() {
         if (isNaN(val)) val = 10;
         val = Math.max(0, Math.min(51, val));
         EFTForge.state.currentStrengthLevel = val;
-        numInput.value = val;
-        slider.value = val;
-        localStorage.setItem("eftforge_strength_level", val);
+        numInput.value = String(val);
+        slider.value = String(val);
+        localStorage.setItem("eftforge_strength_level", String(val));
         refreshBuildStats();
     });
 
@@ -1261,8 +1261,8 @@ function wireStrengthControls() {
         if (isNaN(val)) return;
         val = Math.max(0, Math.min(51, val));
         EFTForge.state.currentStrengthLevel = val;
-        numInput.value = val;
-        slider.value = val;
+        numInput.value = String(val);
+        slider.value = String(val);
         EFTForge.builder3d?.onAimSettings();
 
         const armStamina = calcArmStamina(EFTForge.state.lastTotalWeight, EFTForge.state.lastTotalErgo, EFTForge.state.currentStrengthLevel, EFTForge.state.currentEquipErgoModifier);
@@ -1278,11 +1278,11 @@ function _setStrengthLevel(level) {
     const val = Math.max(0, Math.min(51, Math.round(Number(level) || 0)));
     if (val === EFTForge.state.currentStrengthLevel) return;
     EFTForge.state.currentStrengthLevel = val;
-    localStorage.setItem("eftforge_strength_level", val);
-    const slider = document.getElementById("strength-slider");
-    const numInput = document.getElementById("strength-input");
-    if (slider) slider.value = val;
-    if (numInput) numInput.value = val;
+    localStorage.setItem("eftforge_strength_level", String(val));
+    const slider = /** @type {HTMLInputElement | null} */ (document.getElementById("strength-slider"));
+    const numInput = /** @type {HTMLInputElement | null} */ (document.getElementById("strength-input"));
+    if (slider) slider.value = String(val);
+    if (numInput) numInput.value = String(val);
     const armStamina = calcArmStamina(EFTForge.state.lastTotalWeight, EFTForge.state.lastTotalErgo, val, EFTForge.state.currentEquipErgoModifier);
     const staminaSpan = document.querySelector("#stamina-info-btn")?.closest(".stat-row")?.lastElementChild;
     if (staminaSpan) staminaSpan.textContent = fmtArmStamina(armStamina);
@@ -1311,8 +1311,8 @@ function fmtArmStamina(seconds) {
 }
 
 function wireEquipErgoControls() {
-    const slider = document.getElementById("equip-ergo-slider");
-    const numInput = document.getElementById("equip-ergo-input");
+    const slider = /** @type {HTMLInputElement | null} */ (document.getElementById("equip-ergo-slider"));
+    const numInput = /** @type {HTMLInputElement | null} */ (document.getElementById("equip-ergo-input"));
     if (!slider || !numInput) return;
 
     function updateEquipErgoDisplay() {
@@ -1361,7 +1361,7 @@ function wireEquipErgoControls() {
 
     slider.addEventListener("input", () => {
         EFTForge.state.currentEquipErgoModifier = -parseInt(slider.value) / 100;
-        numInput.value = Math.round(-EFTForge.state.currentEquipErgoModifier * 100);
+        numInput.value = String(Math.round(-EFTForge.state.currentEquipErgoModifier * 100));
         updateEquipErgoDisplay();
     });
 
@@ -1374,8 +1374,8 @@ function wireEquipErgoControls() {
         if (isNaN(val)) val = 0;
         val = Math.max(0, Math.min(100, val));
         EFTForge.state.currentEquipErgoModifier = -val / 100;
-        numInput.value = val;
-        slider.value = val;
+        numInput.value = String(val);
+        slider.value = String(val);
         refreshBuildStats();
     });
 
@@ -1385,8 +1385,8 @@ function wireEquipErgoControls() {
         if (isNaN(val)) return;
         val = Math.max(0, Math.min(100, val));
         EFTForge.state.currentEquipErgoModifier = -val / 100;
-        numInput.value = val;
-        slider.value = val;
+        numInput.value = String(val);
+        slider.value = String(val);
         updateEquipErgoDisplay();
     });
 }
@@ -1406,7 +1406,7 @@ function closeConfigPanel(id) {
 }
 
 document.addEventListener("click", (e) => {
-    if (!e.target.closest("#slots")) return;
+    if (!/** @type {Element} */ (e.target).closest("#slots")) return;
     closeConfigPanel("stamina-panel");
     closeConfigPanel("equip-ergo-panel");
     if (document.getElementById("hidden-stats-panel")) {
@@ -1419,7 +1419,8 @@ document.addEventListener("click", (e) => {
 // listener above (which only covers clicks inside the workbench).
 document.addEventListener("click", (e) => {
     if (!document.getElementById("hidden-stats-panel")) return;
-    if (e.target.closest("#hidden-stats-panel") || e.target.closest("#hidden-stats-btn")) return;
+    const target = /** @type {Element} */ (e.target);
+    if (target.closest("#hidden-stats-panel") || target.closest("#hidden-stats-btn")) return;
     _removeHiddenStatsPanel();
 }, true);
 

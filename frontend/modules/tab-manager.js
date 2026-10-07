@@ -135,8 +135,8 @@ function _serializeActiveTab() {
     const tab = _tabById(activeId);
     if (!tab || !EFTForge.state.currentGun) return;
     tab.pairs = collectSlotPairs(EFTForge.state.buildTree);
-    tab.ammoId = document.getElementById("ammo-select")?.value || null;
-    tab.ubglAmmoId = document.getElementById("ubgl-ammo-select")?.value || null;
+    tab.ammoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"))?.value || null;
+    tab.ubglAmmoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"))?.value || null;
     tab.collapsedSlots = { ...EFTForge.state.collapsedSlots };
     _tabHistory.set(activeId, {
         buildHistory: [...EFTForge.state.buildHistory],
@@ -164,8 +164,8 @@ function syncActiveTab({ buildName = null, communityBuild = null } = {}) {
     tab.buildName = buildName;
     tab.communityBuild = communityBuild;
     tab.pairs = collectSlotPairs(EFTForge.state.buildTree);
-    tab.ammoId = document.getElementById("ammo-select")?.value || null;
-    tab.ubglAmmoId = document.getElementById("ubgl-ammo-select")?.value || null;
+    tab.ammoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"))?.value || null;
+    tab.ubglAmmoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"))?.value || null;
     tab.collapsedSlots = { ...EFTForge.state.collapsedSlots };
     _persistTabsDebounced();
     if (labelChanged) renderTabBar();
@@ -240,8 +240,8 @@ async function createTabForGun(gun, card = null) {
         await selectGun(gun, el);
 
         tab.pairs = collectSlotPairs(EFTForge.state.buildTree);
-        tab.ammoId = document.getElementById("ammo-select")?.value || null;
-        tab.ubglAmmoId = document.getElementById("ubgl-ammo-select")?.value || null;
+        tab.ammoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"))?.value || null;
+        tab.ubglAmmoId = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"))?.value || null;
 
         const dup = _findDuplicateTab(gun.id, tab.pairs, tab.ammoId, tab.ubglAmmoId, id);
         if (dup) {
@@ -426,7 +426,7 @@ function _animateChipClose(chip) {
         const finish = () => {
             if (settled) return;
             settled = true;
-            resolve();
+            resolve(undefined);
         };
         chip.addEventListener("transitionend", finish, { once: true });
         setTimeout(finish, 200); // fallback in case the chip gets detached mid-transition
@@ -557,7 +557,7 @@ function _showTabContextMenu(e, tab) {
     menu.style.top  = top + "px";
 
     menu.addEventListener("click", (ev) => {
-        const btn = ev.target.closest("button[data-action]");
+        const btn = /** @type {HTMLElement | null} */ (/** @type {Element} */ (ev.target).closest("button[data-action]"));
         if (!btn) return;
         const action = btn.dataset.action;
         _closeTabContextMenu();
@@ -1303,21 +1303,21 @@ function _measureTabBarScroll(scroll) {
 
 function _updateTabBarFades() {
     const scroll = document.getElementById("tab-bar-scroll");
-    const fadeLeft = document.querySelector(".tab-bar-fade-left");
-    const fadeRight = document.querySelector(".tab-bar-fade-right");
+    const fadeLeft = /** @type {HTMLElement | null} */ (document.querySelector(".tab-bar-fade-left"));
+    const fadeRight = /** @type {HTMLElement | null} */ (document.querySelector(".tab-bar-fade-right"));
     if (!scroll || !fadeLeft || !fadeRight) return;
 
     const maxScroll = _tabBarMaxScroll;
     if (maxScroll <= 1) {
-        fadeLeft.style.opacity = 0;
-        fadeRight.style.opacity = 0;
+        fadeLeft.style.opacity = "0";
+        fadeRight.style.opacity = "0";
         return;
     }
 
     const left = scroll.scrollLeft;
     const right = maxScroll - scroll.scrollLeft;
-    fadeLeft.style.opacity = Math.max(0, Math.min(1, left / TAB_BAR_FADE_DISTANCE));
-    fadeRight.style.opacity = Math.max(0, Math.min(1, right / TAB_BAR_FADE_DISTANCE));
+    fadeLeft.style.opacity = String(Math.max(0, Math.min(1, left / TAB_BAR_FADE_DISTANCE)));
+    fadeRight.style.opacity = String(Math.max(0, Math.min(1, right / TAB_BAR_FADE_DISTANCE)));
 }
 
 let _disposeTabBarMarquee = null;
@@ -1332,7 +1332,7 @@ function _focusChipByOffset(tabId, delta) {
     if (idx === -1) return;
     const next = EFTForge.state.tabs[idx + delta];
     if (!next) return;
-    document.querySelector(`.tab-chip[data-tab-id="${CSS.escape(next.id)}"]`)?.focus();
+    /** @type {HTMLElement | null} */ (document.querySelector(`.tab-chip[data-tab-id="${CSS.escape(next.id)}"]`))?.focus();
 }
 
 // Mirrors closeTab()'s own "which tab takes over" rule so keyboard focus lands
@@ -1418,7 +1418,7 @@ function renderTabBar() {
         `;
 
         chip.addEventListener("click", (e) => {
-            if (e.target.closest(".tab-chip-close")) return;
+            if (/** @type {Element} */ (e.target).closest(".tab-chip-close")) return;
             switchToTab(tab.id);
         });
         chip.addEventListener("mousedown", (e) => {
@@ -1426,7 +1426,7 @@ function renderTabBar() {
             // auxclick ever fires (that only fires after mouseup) - preventing default
             // there is too late, the browser has already entered autoscroll mode.
             if (e.button === 1) { e.preventDefault(); return; }
-            if (e.button !== 0 || e.target.closest(".tab-chip-close")) return;
+            if (e.button !== 0 || /** @type {Element} */ (e.target).closest(".tab-chip-close")) return;
             _td = { phase: "pending", tab, chip, scroll, startX: e.clientX, startY: e.clientY };
         });
         chip.addEventListener("auxclick", (e) => {
@@ -1489,7 +1489,7 @@ function renderTabBar() {
     _updateTabBarFades();
 
     if (_pendingChipFocus) {
-        const target = scroll.querySelector(`.tab-chip[data-tab-id="${CSS.escape(_pendingChipFocus)}"]`);
+        const target = /** @type {HTMLElement | null} */ (scroll.querySelector(`.tab-chip[data-tab-id="${CSS.escape(_pendingChipFocus)}"]`));
         _pendingChipFocus = null;
         target?.focus();
     }
@@ -1549,7 +1549,7 @@ function _stepTabBarScroll(scroll, ts) {
 // a gunSelect click elsewhere on the page) would reopen the tooltip at that
 // stale point even though the cursor isn't anywhere near the bar.
 function _tpResumeAfterScroll() {
-    const chip = document.elementFromPoint(_tpLastX, _tpLastY)?.closest(".tab-chip");
+    const chip = /** @type {HTMLElement | null} */ (document.elementFromPoint(_tpLastX, _tpLastY)?.closest(".tab-chip"));
     const tab = chip && EFTForge.state.tabs.find(t => t.id === chip.dataset.tabId);
     if (tab) _tpScheduleShow(tab, _tpLastX, _tpLastY);
 }
@@ -1580,7 +1580,7 @@ function _queueTabBarScroll(scroll, deltaY) {
 function _scrollTabIntoView(tabId) {
     const scroll = document.getElementById("tab-bar-scroll");
     if (!scroll) return;
-    const chip = scroll.querySelector(`.tab-chip[data-tab-id="${CSS.escape(tabId)}"]`);
+    const chip = /** @type {HTMLElement | null} */ (scroll.querySelector(`.tab-chip[data-tab-id="${CSS.escape(tabId)}"]`));
     if (!chip) return;
     if (_measureTabBarScroll(scroll) <= 0) return;
 
@@ -1852,7 +1852,7 @@ document.addEventListener("mousemove", (e) => {
     // adjacent chips transiently target the scroll container, not a chip, and forcing
     // a hide there would break the connected-swap bridging (_tpScheduleShow) that
     // avoids a full tooltip redraw when moving directly between two chips.
-    if (e.target.closest(".tab-chip, #tab-preview-tooltip, #tab-bar-scroll")) return;
+    if (/** @type {Element} */ (e.target).closest(".tab-chip, #tab-preview-tooltip, #tab-bar-scroll")) return;
     _tpHide();
 }, { passive: true });
 document.addEventListener("mouseleave", () => { if (_tpActiveTabId) _tpHide(); });

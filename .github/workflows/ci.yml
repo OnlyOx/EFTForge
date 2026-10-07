@@ -71,7 +71,7 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
-      - name: typecheck (files marked // @ts-check)
+      - name: typecheck
         working-directory: frontend
         run: npm run typecheck
 

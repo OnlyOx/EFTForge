@@ -1,4 +1,3 @@
-// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported proxyAvatarUrl, isMobileLayout, _formatPrice, setToastStatus, setupCustomScrollbar -- called from other modules */
