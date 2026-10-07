@@ -17,11 +17,12 @@ from tests.test_reachability_integration import consume, setup_graph
 @pytest.fixture
 def db():
     # Import after collection so real-data tests can detect an absent game DB.
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from database import Base
     from services import solver_cache
 
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    main.Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     solver_cache.clear_solver_caches()
     with Session(engine) as session:
         yield session

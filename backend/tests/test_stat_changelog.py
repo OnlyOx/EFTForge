@@ -15,7 +15,8 @@ def api():
     # Import lazily so collection does not initialize the application databases.
     os.environ.setdefault("IP_HASH_SECRET", "changelog-test-secret")
     os.environ.setdefault("ADMIN_API_KEY", "changelog-test-admin")
-    import main
+    import main  # noqa: F401 - creates the app databases
+    from database import Base
     from database_changelog import ChangelogBase
     from models_items import Item
     from models_slot_allowed import SlotAllowedItem
@@ -23,7 +24,7 @@ def api():
     from routers import stat_changelog
 
     return SimpleNamespace(
-        Base=main.Base,
+        Base=Base,
         ChangelogBase=ChangelogBase,
         Item=Item,
         SlotAllowedItem=SlotAllowedItem,

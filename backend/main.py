@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware as GZIPMiddleware
 
-# Import every model module so its tables are registered before create_all below.
+# Import every model module so its tables are registered before prepare_databases() below.
 import models_builds  # noqa: F401
 import models_item_offers  # noqa: F401
 import models_items  # noqa: F401
@@ -17,11 +17,7 @@ import models_traders  # noqa: F401
 import models_weapon_presets  # noqa: F401
 from catalog_cache import DATA_VERSION_HEADER, CatalogCacheMiddleware
 from config import CORS_ORIGINS, DESKTOP_MODE, ENABLE_API_DOCS
-from database import Base, engine
-from database_builds import BuildsBase, builds_engine
-from database_changelog import ChangelogBase, changelog_engine
-from database_ratings import RatingsBase, ratings_engine
-from db_migrations import migrate_builds_db, migrate_item_offers_db, migrate_items_db, migrate_slots_db
+from db_migrations import prepare_databases
 from optimizer.cancellation import SolveCancellationMiddleware
 from routers import (
     admin_builds,
@@ -65,23 +61,15 @@ app.add_middleware(
 # catalog_cache.py and services/sync.py).
 app.add_middleware(CatalogCacheMiddleware, data_version=data_version)
 
-if DESKTOP_MODE:
+
+def _desktop_status(code: str) -> None:
     # Picked up by the Tauri launcher and forwarded to the splash screen -
     # see backend/desktop_main.py and ui-shell/index.html.
-    print("EFTFORGE_STATUS=preparing_database", flush=True)
+    if DESKTOP_MODE:
+        print(f"EFTFORGE_STATUS={code}", flush=True)
 
-Base.metadata.create_all(bind=engine)
-RatingsBase.metadata.create_all(bind=ratings_engine)
-BuildsBase.metadata.create_all(bind=builds_engine)
-ChangelogBase.metadata.create_all(bind=changelog_engine)
 
-if DESKTOP_MODE:
-    print("EFTFORGE_STATUS=applying_updates", flush=True)
-
-migrate_builds_db()
-migrate_items_db()
-migrate_slots_db()
-migrate_item_offers_db()
+prepare_databases(status=_desktop_status)
 
 
 @app.on_event("startup")
