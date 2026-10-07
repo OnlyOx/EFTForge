@@ -31,6 +31,7 @@
       "../../frontend/marked.min.js": "frontend/marked.min.js",
       "../../frontend/assets": "frontend/assets",
       "../../frontend/css": "frontend/css",
+      "../../frontend/data": "frontend/data",
       "../../frontend/modules": "frontend/modules",
       "../../frontend/offline": "frontend/offline",
       "resources/tarkov.db": "tarkov.db"

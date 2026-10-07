@@ -320,7 +320,7 @@ External tools can deep-link directly into EFTForge with a pre-loaded build via 
 https://eftforge.com/?build=<share_code>
 ```
 
-The loader accepts three share code formats: dictionary based `3.` codes, full-ID compact `2.` codes, and legacy LZ-String codes. EFTForge generates the shorter of `3.` and `2.` for each build. External projects can generate either compact format by following the encoder in [`frontend/modules/build-manager.js`](frontend/modules/build-manager.js). `3.` codes also require the frozen item and slot dictionary in [`frontend/data/build-code-catalog-v1.js`](frontend/data/build-code-catalog-v1.js); see [`scripts/BUILD_CODES.md`](scripts/BUILD_CODES.md) for the format and dictionary rules. Use `2.` when an ID or slot is absent from the dictionary. Neither compact format requires a per-build server record.
+The loader accepts three share code formats: dictionary based `3.` codes, full-ID compact `2.` codes, and legacy LZ-String codes. EFTForge generates the shorter of `3.` and `2.` for each build. External projects can generate either compact format by following the encoder in [`frontend/modules/build-codes.js`](frontend/modules/build-codes.js). `3.` codes also require the frozen item and slot dictionary in [`frontend/data/build-code-catalog-v1.js`](frontend/data/build-code-catalog-v1.js); see [`scripts/BUILD_CODES.md`](scripts/BUILD_CODES.md) for the format and dictionary rules. Use `2.` when an ID or slot is absent from the dictionary. Neither compact format requires a per-build server record.
 
 For the simplest integration, external projects can still generate a legacy code with LZ-String's `compressToEncodedURIComponent(JSON.stringify(payload))`. All three formats represent the same payload:
 

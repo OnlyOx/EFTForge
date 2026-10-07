@@ -320,7 +320,7 @@ launch.bat
 https://eftforge.com/?build=<配置码>
 ```
 
-加载器支持三种配置码格式：基于字典的 `3.` 格式、包含完整 ID 的紧凑 `2.` 格式，以及旧版 LZ-String 格式。EFTForge 会为每套配置方案生成 `3.` 和 `2.` 中较短的一种。外部项目可以参照 [`frontend/modules/build-manager.js`](frontend/modules/build-manager.js) 中的编码器生成任一种紧凑格式。生成 `3.` 格式还需要 [`frontend/data/build-code-catalog-v1.js`](frontend/data/build-code-catalog-v1.js) 中的固定物品与槽位字典；格式和字典规则见 [`scripts/BUILD_CODES.md`](scripts/BUILD_CODES.md)。如果某个 ID 或槽位不在字典中，请使用 `2.` 格式。两种紧凑格式都不需要为每套配置方案在服务器上保存记录。
+加载器支持三种配置码格式：基于字典的 `3.` 格式、包含完整 ID 的紧凑 `2.` 格式，以及旧版 LZ-String 格式。EFTForge 会为每套配置方案生成 `3.` 和 `2.` 中较短的一种。外部项目可以参照 [`frontend/modules/build-codes.js`](frontend/modules/build-codes.js) 中的编码器生成任一种紧凑格式。生成 `3.` 格式还需要 [`frontend/data/build-code-catalog-v1.js`](frontend/data/build-code-catalog-v1.js) 中的固定物品与槽位字典；格式和字典规则见 [`scripts/BUILD_CODES.md`](scripts/BUILD_CODES.md)。如果某个 ID 或槽位不在字典中，请使用 `2.` 格式。两种紧凑格式都不需要为每套配置方案在服务器上保存记录。
 
 如需最简单的集成方式，外部项目仍可使用 LZ-String 的 `compressToEncodedURIComponent(JSON.stringify(payload))` 生成旧版配置码。三种格式表示相同的载荷：
 

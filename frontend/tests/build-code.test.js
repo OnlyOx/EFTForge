@@ -6,7 +6,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const LZString = require("../lzstring.min.js");
 
-const source = fs.readFileSync(path.join(__dirname, "../modules/build-manager.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "../modules/build-codes.js"), "utf8");
 const EFTForge = {};
 const context = vm.createContext({
     window: { EFTForge }, EFTForge, LZString, TextEncoder, TextDecoder, btoa, atob,
