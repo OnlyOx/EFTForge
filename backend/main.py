@@ -16,7 +16,7 @@ import models_stat_changelog  # noqa: F401
 import models_traders  # noqa: F401
 import models_weapon_presets  # noqa: F401
 from catalog_cache import DATA_VERSION_HEADER, CatalogCacheMiddleware
-from config import CORS_ORIGINS, DESKTOP_MODE, ENABLE_API_DOCS
+from config import CORS_ORIGINS, DESKTOP_MODE, ENABLE_API_DOCS, LOCAL_DEV
 from db_migrations import prepare_databases
 from optimizer.cancellation import SolveCancellationMiddleware
 from routers import (
@@ -39,6 +39,7 @@ from routers import (
     system,
 )
 from services.build_cards import start_card_migration
+from services.community_proxy import add_dev_connected_middleware
 from services.solver_cache import clear_solver_caches
 from services.sync import data_version, start_background_sync
 
@@ -47,6 +48,10 @@ _redoc_url = "/redoc" if ENABLE_API_DOCS else None
 _openapi_url = "/openapi.json" if ENABLE_API_DOCS else None
 
 app = FastAPI(title="EFTForge API", docs_url=_docs_url, redoc_url=_redoc_url, openapi_url=_openapi_url)
+# Local dev connected mode (DEV modal). Added first so it sits inside CORS and
+# the forwarded responses still get our CORS headers.
+if LOCAL_DEV:
+    add_dev_connected_middleware(app)
 app.add_middleware(SolveCancellationMiddleware)
 app.add_middleware(GZIPMiddleware, minimum_size=500)
 app.add_middleware(

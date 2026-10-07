@@ -24,6 +24,10 @@ except ImportError:
 # ---------------------------------------------------------------------------
 DESKTOP_MODE = os.environ.get("EFTFORGE_DESKTOP", "0") == "1"
 
+# Set by reset.py's dev branch (never by --prod). Unlocks local-dev-only
+# endpoints such as the DEV modal's connected mode toggle.
+LOCAL_DEV = os.environ.get("EFTFORGE_LOCAL_DEV", "0") == "1" and not DESKTOP_MODE
+
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 
 

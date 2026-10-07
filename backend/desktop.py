@@ -27,7 +27,6 @@ import time
 
 from solver_cache_epoch import bump_solver_cache_epoch
 
-import requests
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -42,6 +41,7 @@ from config import (
     REMOTE_ORIGIN,
     RUNTIME_DIR,
 )
+from services.community_proxy import COMMUNITY_PREFIXES, forward_to_remote, make_session, path_matches
 
 _logger = logging.getLogger("uvicorn.error")
 
@@ -111,21 +111,6 @@ def _save_settings(settings: dict) -> None:
 # internet regardless of local/connected mode.
 _NEWS_PREFIX = ("/news",)
 
-# Path prefixes forwarded to eftforge.com in connected mode. Matching is on
-# whole path segments ("/builds" matches "/builds/public" but not
-# "/builds-x"). /admin is deliberately absent: admin endpoints only ever hit
-# the local backend and the local admin key is never sent upstream.
-_COMMUNITY_PREFIXES = (
-    "/ratings",
-    "/builds",
-    "/leaderboard",
-    "/announcements",
-    "/profile",
-    "/stat-changelog",
-    "/build-image",
-    "/health/imggen",
-)
-
 # In local mode these return a clean 503 instead of touching the local DBs -
 # community features are OFF, not "community with an empty local dataset".
 # The frontend hides all of this UI in local mode; the block is just
@@ -140,78 +125,7 @@ _LOCAL_BLOCKED_PREFIXES = (
     "/health/imggen",
 )
 
-# Hop-by-hop / local-only request headers never forwarded upstream.
-_STRIP_REQUEST_HEADERS = {
-    "host",
-    "connection",
-    "keep-alive",
-    "proxy-authorization",
-    "te",
-    "trailers",
-    "transfer-encoding",
-    "upgrade",
-    "content-length",
-    "accept-encoding",
-    "origin",
-    "referer",
-    "x-admin-key",
-}
-
-# Response headers not forwarded back (requests already decodes the body).
-_STRIP_RESPONSE_HEADERS = {
-    "content-encoding",
-    "transfer-encoding",
-    "content-length",
-    "connection",
-    "keep-alive",
-    "alt-svc",
-    "server",
-    "strict-transport-security",
-}
-
-_proxy_session = requests.Session()
-_proxy_session.headers["User-Agent"] = f"EFTForge-Desktop/{DESKTOP_APP_VERSION} (+https://eftforge.com)"
-
-
-def _path_matches(path: str, prefixes: tuple) -> bool:
-    for prefix in prefixes:
-        if path == prefix or path.startswith(prefix + "/"):
-            return True
-    return False
-
-
-def _forward_to_remote(request: Request, body: bytes) -> Response:
-    url = REMOTE_ORIGIN + request.url.path
-    if request.url.query:
-        url += "?" + request.url.query
-
-    headers = {k: v for k, v in request.headers.items() if k.lower() not in _STRIP_REQUEST_HEADERS}
-
-    try:
-        upstream = _proxy_session.request(
-            request.method,
-            url,
-            data=body if body else None,
-            headers=headers,
-            # Connect fast-fails; long read timeout covers build-image
-            # generation (prod nginx allows 130s).
-            timeout=(10, 130),
-            allow_redirects=False,
-        )
-    except requests.RequestException as exc:
-        _logger.warning("community proxy: %s %s failed: %s", request.method, url, exc)
-        return Response(
-            content=json.dumps({"detail": f"EFTForge.com unreachable: {exc.__class__.__name__}"}),
-            status_code=502,
-            media_type="application/json",
-        )
-
-    response_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in _STRIP_RESPONSE_HEADERS}
-    return Response(
-        content=upstream.content,
-        status_code=upstream.status_code,
-        headers=response_headers,
-    )
+_proxy_session = make_session(f"EFTForge-Desktop/{DESKTOP_APP_VERSION} (+https://eftforge.com)")
 
 
 # ---------------------------------------------------------------------------
@@ -412,14 +326,14 @@ def init_desktop(app: FastAPI, clear_caches=None) -> None:
     @app.middleware("http")
     async def _community_proxy(request: Request, call_next):
         path = request.url.path
-        if _path_matches(path, _NEWS_PREFIX):
+        if path_matches(path, _NEWS_PREFIX):
             body = await request.body()
-            return await run_in_threadpool(_forward_to_remote, request, body)
-        if _path_matches(path, _COMMUNITY_PREFIXES):
+            return await run_in_threadpool(forward_to_remote, _proxy_session, request, body)
+        if path_matches(path, COMMUNITY_PREFIXES):
             if get_settings()["community_mode"] == "connected":
                 body = await request.body()
-                return await run_in_threadpool(_forward_to_remote, request, body)
-            if _path_matches(path, _LOCAL_BLOCKED_PREFIXES):
+                return await run_in_threadpool(forward_to_remote, _proxy_session, request, body)
+            if path_matches(path, _LOCAL_BLOCKED_PREFIXES):
                 return Response(
                     content=json.dumps({"detail": "community_disabled_local_mode"}),
                     status_code=503,

@@ -13,6 +13,7 @@ backend/*.db
 backend/stat_snapshot.json
 backend/last_sync.json
 backend/dev_sync_notice.json
+backend/dev_connected_mode.json
 backend/solver_cache_epoch
 backend/.solver-cache-epoch-*
 

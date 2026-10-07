@@ -98,6 +98,7 @@
     "collectSlotPairs": "readonly",
     "comboFull": "readonly",
     "computeGridPositions": "readonly",
+    "createSlotParentResolver": "readonly",
     "decodeBuildCode": "readonly",
     "detectInstalledUbgl": "readonly",
     "encodeBuild": "readonly",

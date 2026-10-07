@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from config import RUNTIME_DIR
+from config import LOCAL_DEV, REMOTE_ORIGIN, RUNTIME_DIR
 from routers.shared import get_db, require_admin
-from services import sync
+from services import community_proxy, sync
 
 router = APIRouter()
 
@@ -78,6 +78,30 @@ def get_dev_sync_notice():
     except OSError:
         pass
     return {"changed": True}
+
+
+def _require_local_dev(request: Request) -> None:
+    # 404 rather than 403 so these routes look absent anywhere but a reset.py
+    # dev server, and only a direct loopback client may use them.
+    client = request.client.host if request.client else ""
+    if not LOCAL_DEV or client not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@router.get("/dev/connected-mode")
+def get_dev_connected_mode(request: Request):
+    """Local-dev only: whether community reads are forwarded to the live service."""
+    _require_local_dev(request)
+    return {"enabled": community_proxy.dev_connected_enabled(), "remote_origin": REMOTE_ORIGIN}
+
+
+@router.post("/dev/connected-mode")
+def set_dev_connected_mode(request: Request, enabled: bool = Body(..., embed=True)):
+    """Local-dev only: toggled from the DEV modal. Forwards community GETs to
+    the live service and rejects community writes while on."""
+    _require_local_dev(request)
+    community_proxy.set_dev_connected(enabled)
+    return {"enabled": community_proxy.dev_connected_enabled(), "remote_origin": REMOTE_ORIGIN}
 
 
 # ---------------------------------------------------

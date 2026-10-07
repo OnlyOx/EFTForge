@@ -9814,6 +9814,11 @@ body[data-mobile="true"].mobile-publish-mode #left-build-area {
   color: #f5c542;
   border-color: #555;
 }
+/* Community data is coming from the live service, so make that hard to miss */
+.dev-modal-trigger.dev-connected {
+  color: #4a90d9;
+  border-color: #2a4f78;
+}
 
 /* Dev modal rows */
 .dev-modal-section-label {
@@ -9854,6 +9859,16 @@ body[data-mobile="true"].mobile-publish-mode #left-build-area {
   background: #1a2e1a;
   border-color: #2e6b2e;
   color: #4caf50;
+}
+.dev-modal-toggle:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.dev-modal-row-hint {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-top: 2px;
 }
 .dev-item-id-badge {
   font-family: "Courier New", monospace;

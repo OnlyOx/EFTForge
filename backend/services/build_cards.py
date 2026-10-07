@@ -67,17 +67,26 @@ def build_spt_items(gun_id: str, pairs: list) -> list:
         slots = db.query(Slot).filter(Slot.id.in_(slot_ids)).all()
     slot_map = {s.id: s for s in slots}
 
-    # tracks item template id -> instance id so children can find their parent
-    instance_map: dict[str, str] = {gun_id: gun_instance_id}
+    # Item template id -> its instance ids in the order they were installed. A
+    # part installed twice shares slot ids between its copies, so each pair goes
+    # to the first copy whose slot is still empty. Pairs list copies and their
+    # children in the same breadth-first order, which puts every part back where
+    # it was (frontend createSlotParentResolver does the same).
+    instances: dict[str, list[str]] = {gun_id: [gun_instance_id]}
+    filled: set[tuple[str, str]] = set()
 
     for slot_id, item_id in pairs:
         slot = slot_map.get(slot_id)
         if not slot:
             raise ValueError(f"Unknown build image slot: {slot_id}")
         game_slot_name = slot.slot_game_name or slot.slot_name
-        parent_instance = instance_map.get(slot.parent_item_id)
+        parent_instance = next(
+            (i for i in instances.get(slot.parent_item_id, ()) if (i, slot_id) not in filled),
+            None,
+        )
         if not parent_instance:
             raise ValueError(f"Unresolved build image parent for slot: {slot_id}")
+        filled.add((parent_instance, slot_id))
         instance_id = _bp_hex24(parent_instance + ":" + game_slot_name)
         items.append(
             {
@@ -87,7 +96,7 @@ def build_spt_items(gun_id: str, pairs: list) -> list:
                 "parentId": parent_instance,
             }
         )
-        instance_map[item_id] = instance_id
+        instances.setdefault(item_id, []).append(instance_id)
 
     return items
 

@@ -252,30 +252,19 @@ function _bpBuildSptItems() {
 
 // Reconstruct a minimal install tree from flat [slotId, itemId] pairs (the
 // shape a tab record stores its build in) using the global slotCache to
-// resolve each pair's parent node - same linkage logic as build-manager.js's
-// buildSlotParentMap, just re-run per pair since we don't have a live tree.
+// resolve each pair's parent node, the same way the build loader does.
 // Pairs are expected in parent-before-child order (how collectSlotPairs emits
 // them), matching every place pairs are produced in this codebase.
 function _bpTreeFromPairs(gun, pairs) {
     const root = { item: { id: gun.id }, children: {} };
-
-    // slotId -> the node that owns that slot. Built once from the root and
-    // extended as each node is attached: a newly attached node can only ever
-    // contribute its own slots, so re-walking the whole tree per pair (which is
-    // what this used to do, quadratic in attachment count) buys nothing.
-    const slotToParent = {};
-    function addSlots(node) {
-        const slots = EFTForge.state.slotCache[node.item.id] || [];
-        for (const slot of slots) slotToParent[slot.id] = node;
-    }
-    addSlots(root);
+    const parents = createSlotParentResolver(root, id => EFTForge.state.slotCache[id]);
 
     for (const [slotId, itemId] of pairs) {
-        const parent = slotToParent[slotId];
+        const parent = parents.parentFor(slotId);
         if (!parent) return null;
         const node = { item: { id: itemId }, children: {} };
         parent.children[slotId] = node;
-        addSlots(node);
+        parents.addNode(node);
     }
     return root;
 }

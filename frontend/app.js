@@ -1568,6 +1568,7 @@ async function switchLang(lang) {
         // header is narrower, e.g. the desktop app's window-controls layout.
         const tarkovClock = document.getElementById("tarkov-clock");
         if (tarkovClock) tarkovClock.insertAdjacentElement("afterend", btn);
+        _fetchConnectedMode().then(state => btn.classList.toggle("dev-connected", !!state?.enabled));
 
         // Restore item ID overlay state
         window.EFTForge._dev = window.EFTForge._dev || {};
@@ -1588,6 +1589,64 @@ async function switchLang(lang) {
                     badge.classList.remove("dev-item-id-badge--copied");
                 }, 1000);
             });
+        });
+    }
+
+    // ── Connected mode ──────────────────────────────────────────
+    // The local backend forwards community reads to the live service while this
+    // is on (backend/services/community_proxy.py). The desktop app has its own
+    // switch in its settings, and the endpoint only exists on a reset.py dev
+    // server, so we resolve to null anywhere else.
+    async function _fetchConnectedMode() {
+        if (EFTForge.config.IS_DESKTOP) return null;
+        try {
+            const res = await fetch(`${EFTForge.config.API_BASE}/dev/connected-mode`, { cache: "no-store" });
+            return res.ok ? await res.json() : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async function _setConnectedMode(enabled) {
+        const res = await fetch(`${EFTForge.config.API_BASE}/dev/connected-mode`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+
+    async function _bindConnectedModeToggle() {
+        const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById("dev-connected-toggle"));
+        const hint = document.getElementById("dev-connected-hint");
+        if (!btn || !hint) return;
+
+        const state = await _fetchConnectedMode();
+        if (!state) {
+            hint.textContent = "Unavailable: start the backend through reset.py / launch.bat";
+            return;
+        }
+        const render = (enabled) => {
+            btn.disabled = false;
+            btn.textContent = enabled ? "ON" : "OFF";
+            btn.classList.toggle("active", enabled);
+            hint.textContent = enabled
+                ? `Read only from ${state.remote_origin}`
+                : "Using local community databases";
+        };
+        render(state.enabled);
+
+        btn.addEventListener("click", async () => {
+            btn.disabled = true;
+            try {
+                await _setConnectedMode(!btn.classList.contains("active"));
+                // Community views cache what they already loaded, so start clean.
+                window.location.reload();
+            } catch (err) {
+                hint.textContent = `Toggle failed: ${err.message}`;
+                btn.disabled = false;
+            }
         });
     }
 
@@ -1960,7 +2019,18 @@ async function switchLang(lang) {
                 <div style="overflow-y:auto; flex:1;">
                     <div class="modal-body" style="gap:0; padding:0;">
 
-                        <div class="dev-modal-section-label">Screenshot Mode</div>
+                        ${EFTForge.config.IS_DESKTOP ? "" : `
+                        <div class="dev-modal-section-label">Community Data</div>
+                        <div class="dev-modal-row">
+                            <span class="dev-modal-row-label">
+                                Connected to live EFTForge.com
+                                <span class="dev-modal-row-hint" id="dev-connected-hint">Checking...</span>
+                            </span>
+                            <button id="dev-connected-toggle" class="dev-modal-toggle" disabled>OFF</button>
+                        </div>
+                        `}
+
+                        <div class="dev-modal-section-label"${EFTForge.config.IS_DESKTOP ? "" : ` style="padding-top:18px;"`}>Screenshot Mode</div>
                         <div class="dev-modal-row">
                             <span class="dev-modal-row-label" id="dev-capture-status"></span>
                             <div class="capture-modal-actions">
@@ -2048,6 +2118,7 @@ async function switchLang(lang) {
         document.body.appendChild(overlay);
 
         document.getElementById("dev-modal-close").addEventListener("click", () => overlay.remove());
+        _bindConnectedModeToggle();
 
         const capture = EFTForge._dev?.screenshotMode;
         function updateCaptureStatus() {

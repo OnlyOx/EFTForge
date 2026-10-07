@@ -1110,18 +1110,6 @@ async function _publishSavedBuildById(id) {
    BUILD RECONSTRUCTION
 =========================== */
 
-// Build a synchronous map: slotId → parent tree node.
-// Uses EFTForge.state.slotCache (populated by installFactoryAttachment + pre-warm steps).
-function buildSlotParentMap(node, map) {
-    const slots = EFTForge.state.slotCache[node.item.id];
-    if (slots) {
-        for (const slot of slots) map[slot.id] = node;
-    }
-    for (const childSlotId in node.children) {
-        buildSlotParentMap(node.children[childSlotId], map);
-    }
-}
-
 // Load a build from a decoded payload { g: gunId, p: [[slotId, itemId], ...] }
 // collapsedSlots: the tree-collapse state to install alongside the build. Tabs
 // pass their own so switching to one restores it in the SAME render as the build
@@ -1198,6 +1186,7 @@ async function loadBuildFromPayload({ g: gunId, p: pairs, a: ammoId = null, ua: 
 
     // BFS install - pairs are in parent-before-child order; both caches are fully warm
     let missingCount = 0;
+    const parents = createSlotParentResolver(EFTForge.state.buildTree, id => EFTForge.state.slotCache[id]);
     for (const [slotId, itemId] of pairs) {
         const allowed = EFTForge.state.allowedCache[slotId];
         if (!allowed) { missingCount++; continue; }
@@ -1205,14 +1194,12 @@ async function loadBuildFromPayload({ g: gunId, p: pairs, a: ammoId = null, ua: 
         const itemObj = allowed.find(i => i.id === itemId);
         if (!itemObj) { missingCount++; continue; }
 
-        // Build slot→parent map from current tree using EFTForge.state.slotCache
-        const slotToParent = {};
-        buildSlotParentMap(EFTForge.state.buildTree, slotToParent);
-
-        const parentNode = slotToParent[slotId];
+        const parentNode = parents.parentFor(slotId);
         if (!parentNode) { missingCount++; continue; }
 
-        parentNode.children[slotId] = { item: itemObj, children: {} };
+        const node = { item: itemObj, children: {} };
+        parentNode.children[slotId] = node;
+        parents.addNode(node);
     }
 
     EFTForge.state.processedCache = {};

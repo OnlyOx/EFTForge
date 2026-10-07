@@ -121,3 +121,35 @@ test("a missing catalog keeps full-ID exports usable and rejects catalog codes",
         EFTForge.buildCodeCatalogs[1] = catalog;
     }
 });
+
+test("slot parents go to the first copy of a duplicated part with that slot free", () => {
+    const slots = {
+        gun: [{ id: "s_handguard" }],
+        handguard: [{ id: "s_mount_a" }, { id: "s_cover" }],
+        cover: [{ id: "s_mount_b" }],
+        rail: [{ id: "s_tactical" }],
+        ring: [{ id: "s_ring" }],
+    };
+    // Build 2190's layout: a handguard rail and a cover rail, each with its own Tactical part.
+    const pairs = [
+        ["s_handguard", "handguard"], ["s_mount_a", "rail"], ["s_cover", "cover"], ["s_tactical", "ring"],
+        ["s_mount_b", "rail"], ["s_ring", "light"], ["s_tactical", "laser"],
+    ];
+    const root = { item: { id: "gun" }, children: {} };
+    const parents = context.createSlotParentResolver(root, id => slots[id]);
+    for (const [slotId, itemId] of pairs) {
+        const parent = parents.parentFor(slotId);
+        assert.ok(parent, `no parent for ${slotId}`);
+        const node = { item: { id: itemId }, children: {} };
+        parent.children[slotId] = node;
+        parents.addNode(node);
+    }
+    const handguard = root.children.s_handguard;
+    const railA = handguard.children.s_mount_a;
+    const railB = handguard.children.s_cover.children.s_mount_b;
+    assert.equal(railA.children.s_tactical.item.id, "ring");
+    assert.equal(railA.children.s_tactical.children.s_ring.item.id, "light");
+    assert.equal(railB.children.s_tactical.item.id, "laser");
+    assert.deepEqual(plain(context.collectSlotPairs(root)), pairs);
+    assert.equal(parents.parentFor("s_tactical"), null);
+});

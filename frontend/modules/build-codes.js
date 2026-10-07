@@ -1,6 +1,6 @@
 window.EFTForge = window.EFTForge || {};
 
-/* exported collectSlotPairs, _pairsKey, convertBuildCode -- called from other modules or index.html attributes */
+/* exported collectSlotPairs, createSlotParentResolver, _pairsKey, convertBuildCode --called from other modules or index.html attributes */
 
 /* ============================================================
    BUILD CODES
@@ -26,6 +26,29 @@ function collectSlotPairs(node) {
         }
     }
     return pairs;
+}
+
+// Resolves which tree node a pair's slot belongs to while we rebuild a tree from
+// pairs. A part installed twice gives two nodes the same slot IDs, so we keep
+// every owner in the order it was attached and hand each pair the first one
+// whose slot is still empty. collectSlotPairs emits copies and their children in
+// the same breadth-first order, so that puts every part back where it was.
+// slotsOf(itemId) returns that item's slots, or undefined if they aren't known.
+function createSlotParentResolver(root, slotsOf) {
+    const owners = {};
+    function addNode(node) {
+        for (const slot of slotsOf(node.item.id) || []) {
+            (owners[slot.id] = owners[slot.id] || []).push(node);
+        }
+    }
+    (function walk(node) {
+        addNode(node);
+        for (const slotId in node.children) walk(node.children[slotId]);
+    }(root));
+    return {
+        addNode,
+        parentFor: slotId => (owners[slotId] || []).find(node => !node.children[slotId]) || null,
+    };
 }
 
 // Canonical sort key for a set of [slotId, itemId] pairs - order-independent

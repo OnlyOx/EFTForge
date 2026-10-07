@@ -644,6 +644,7 @@ async function _restoreBuildFromPairs(pairs) {
     EFTForge.state.buildTree.children = {};
     EFTForge.state.processedCache = {};
 
+    const parents = createSlotParentResolver(EFTForge.state.buildTree, id => EFTForge.state.slotCache[id]);
     for (const [slotId, itemId] of pairs) {
         if (!EFTForge.state.allowedCache[slotId]) {
             try {
@@ -657,13 +658,11 @@ async function _restoreBuildFromPairs(pairs) {
         const itemObj = allowed.find(i => i.id === itemId);
         if (!itemObj) continue;
 
-        const slotToParent = {};
-        buildSlotParentMap(EFTForge.state.buildTree, slotToParent);
-
-        const parentNode = slotToParent[slotId];
+        const parentNode = parents.parentFor(slotId);
         if (!parentNode) continue;
 
-        parentNode.children[slotId] = { item: itemObj, children: {} };
+        const node = { item: itemObj, children: {} };
+        parentNode.children[slotId] = node;
 
         if (!EFTForge.state.slotCache[itemObj.id]) {
             try {
@@ -671,6 +670,7 @@ async function _restoreBuildFromPairs(pairs) {
                 cacheSet(EFTForge.state.slotCache, itemObj.id, slots);
             } catch {}
         }
+        parents.addNode(node);
     }
 
     // Close the attachment table since the build state changed

@@ -140,7 +140,8 @@ def seed_other():
 
 def start_server_dev():
     print("Starting server (dev mode with --reload)...")
-    subprocess.run([sys.executable, "-m", "uvicorn", "main:app", "--reload"])
+    env = {**os.environ, "EFTFORGE_LOCAL_DEV": "1"}
+    subprocess.run([sys.executable, "-m", "uvicorn", "main:app", "--reload"], env=env)
 
 
 def start_server_prod():
