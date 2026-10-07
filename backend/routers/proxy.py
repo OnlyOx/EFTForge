@@ -1,7 +1,11 @@
 """Image proxy used by graph export to get around CORS on asset hosts."""
 
+import re
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from urllib3.exceptions import LocationParseError
+from urllib3.util import parse_url
 
 from services.gitee import AVATAR_COOLDOWN, GITEE_FOLDER, http_session
 
@@ -16,23 +20,49 @@ _PROXY_ALLOWED_HOSTS = {"assets.tarkov.dev", "gitee.com", "raw.giteeusercontent.
 _PROXY_MAX_BYTES = 20 * 1024 * 1024  # 20 MB cap per proxied asset
 
 
-def _proxy_host_allowed(netloc: str) -> bool:
+_DNS_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+
+
+def _proxy_host_allowed(host: str) -> bool:
     # Exact match or subdomain of an allowed host (e.g. foruda.gitee.com for gitee.com avatars)
-    return netloc in _PROXY_ALLOWED_HOSTS or any(netloc.endswith("." + h) for h in _PROXY_ALLOWED_HOSTS)
+    return host in _PROXY_ALLOWED_HOSTS or any(host.endswith("." + h) for h in _PROXY_ALLOWED_HOSTS)
+
+
+def _allowed_proxy_url(url: str) -> str | None:
+    """Return the exact URL to fetch, or None when it isn't an https URL on an allowed host.
+
+    Check the URL with urllib3's parser, the one requests sends with, and fetch the URL
+    that parser rebuilds. urllib.parse reads "https://127.0.0.1\\.gitee.com/" as a
+    gitee.com subdomain while urllib3 connects to 127.0.0.1, so validating with one
+    parser and fetching with the other let any host through.
+    """
+    if "\\" in url or any(ord(c) <= 0x20 or ord(c) == 0x7F for c in url):
+        return None
+    try:
+        parsed = parse_url(url)
+    except LocationParseError:
+        return None
+    host = (parsed.host or "").lower()
+    if (
+        parsed.scheme != "https"
+        or parsed.auth
+        or parsed.port not in (None, 443)
+        or not _DNS_NAME_RE.match(host)
+        or not _proxy_host_allowed(host)
+    ):
+        return None
+    return parsed.url
 
 
 @router.get("/proxy-asset")
 def proxy_asset(url: str, request: Request):
-    from urllib.parse import urlparse
-
-    parsed = urlparse(url)
-    if not _proxy_host_allowed(parsed.netloc) or parsed.scheme != "https":
+    current_url = _allowed_proxy_url(url)
+    if current_url is None:
         raise HTTPException(status_code=400, detail="URL not in proxy allowlist")
     try:
         # Follow redirects manually so each hop is validated against the allowlist.
         # Gitee avatar URLs redirect to CDN subdomains (e.g. foruda.gitee.com) which
         # are allowed as subdomains of gitee.com but would escape a naive allow_redirects=True.
-        current_url = url
         r = None
         for _ in range(5):
             r = http_session.get(current_url, timeout=8, stream=True, allow_redirects=False)
@@ -41,10 +71,9 @@ def proxy_asset(url: str, request: Request):
                 location = r.headers.get("Location", "")
                 if not location:
                     raise HTTPException(status_code=502, detail="Redirect with no Location header")
-                loc_parsed = urlparse(location)
-                if not _proxy_host_allowed(loc_parsed.netloc) or loc_parsed.scheme != "https":
+                current_url = _allowed_proxy_url(location)
+                if current_url is None:
                     raise HTTPException(status_code=502, detail="Redirect escapes proxy allowlist")
-                current_url = location
                 continue
             r.raise_for_status()
             break
