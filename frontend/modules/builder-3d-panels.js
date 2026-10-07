@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 // ============================================================
@@ -247,6 +248,7 @@ window.EFTForge = window.EFTForge || {};
         for (const [key, label, tip] of SKILLS) {
             const input = el("input", { type: "range", min: "0", max: String(ELITE), step: "1", value: "0", dataset: { key, tipKey: tip } });
             input.addEventListener("input", () => {
+                /** @type {Record<string, number>} */
                 const next = {};
                 for (const i of skills.querySelectorAll("input")) next[i.dataset.key] = Number(i.value);
                 _send("setSkills", next);

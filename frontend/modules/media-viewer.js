@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 window.EFTForge.mediaViewer = (function () {

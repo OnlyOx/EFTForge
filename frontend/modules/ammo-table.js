@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* ============================================================
@@ -79,7 +80,7 @@ window.EFTForge.ammoTable = (function () {
         overlay.classList.add('visible');
         if (backdrop) backdrop.classList.add('visible');
         document.getElementById('main-container')?.setAttribute('inert', '');
-        if (document.activeElement) document.activeElement.blur();
+        if (document.activeElement) /** @type {HTMLElement} */ (document.activeElement).blur();
 
         _updateStaticText();
         _loadData();
@@ -107,7 +108,7 @@ window.EFTForge.ammoTable = (function () {
         const backdrop = document.getElementById('ammo-backdrop');
         if (backdrop) backdrop.addEventListener('click', hidePanel);
 
-        const searchEl = document.getElementById('ammo-search');
+        const searchEl = /** @type {HTMLInputElement | null} */ (document.getElementById('ammo-search'));
         if (searchEl) {
             searchEl.addEventListener('input', function () {
                 _search = searchEl.value.trim().toLowerCase();
@@ -337,10 +338,10 @@ window.EFTForge.ammoTable = (function () {
                        col.key === 'malf_feed_chance' || col.key === 'misfire_chance') {
                 td.textContent = row[col.key] ? Math.round(row[col.key] * 100) + '%' : '';
             } else if (col.key === 'velocity') {
-                td.textContent = row.velocity ? Math.round(row.velocity) : '';
+                td.textContent = row.velocity ? String(Math.round(row.velocity)) : '';
             } else if (col.key === 'heat_factor' || col.key === 'durability_burn_factor' ||
                        col.key === 'penetration_power_deviation') {
-                td.textContent = row[col.key] ? _round2(row[col.key]) : '';
+                td.textContent = row[col.key] ? String(_round2(row[col.key])) : '';
             } else if (col.key === 'trader_price_rub') {
                 _renderPriceCell(td, row);
             } else {
@@ -634,7 +635,7 @@ window.EFTForge.ammoTable = (function () {
     function _updateStaticText() {
         const titleEl = document.getElementById('ammo-panel-title');
         if (titleEl) titleEl.textContent = _t('ammo.title');
-        const searchEl = document.getElementById('ammo-search');
+        const searchEl = /** @type {HTMLInputElement | null} */ (document.getElementById('ammo-search'));
         if (searchEl) searchEl.placeholder = _t('ammo.searchPlaceholder');
         const navTitle = document.getElementById('ammo-nav-title');
         if (navTitle) navTitle.textContent = _t('ammo.nav.title');

@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 // Set by the desktop app's local backend, which injects a flag object into
@@ -39,7 +40,7 @@ window.EFTForge.config = {
     STATIC_ANNOUNCEMENTS_URL: "/offline/announcements.json",
 
     APP_VERSION:    "v2.0.7",
-    APP_BUILD_DATE: "2026-10-07T16:46:24.698Z", // new Date().toISOString()
+    APP_BUILD_DATE: "2026-10-07T17:03:30.480Z", // new Date().toISOString()
 
     CALIBER_DISPLAY_MAP: {
         "Caliber20x1mm":      "20x1mm disk",

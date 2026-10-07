@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* ============================================================
@@ -55,7 +56,7 @@ window.EFTForge.tracker = (function () {
         overlay.classList.add('visible');
         if (backdrop) backdrop.classList.add('visible');
         document.getElementById('main-container')?.setAttribute('inert', '');
-        if (document.activeElement) document.activeElement.blur();
+        if (document.activeElement) /** @type {HTMLElement} */ (document.activeElement).blur();
 
         _updateTitle();
         _updateControlLabels();
@@ -164,7 +165,7 @@ window.EFTForge.tracker = (function () {
     }
 
     function _refreshPeriodSelect() {
-        const sel = document.getElementById('tracker-period-select');
+        const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('tracker-period-select'));
         if (!sel) return;
         const t = EFTForge.lang.t;
         const options = [{ value: 'recent', label: t('tracker.period.recent') }];
@@ -264,7 +265,7 @@ window.EFTForge.tracker = (function () {
 
     function _updateControlLabels() {
         const t = EFTForge.lang.t;
-        const s = document.getElementById('tracker-search');
+        const s = /** @type {HTMLInputElement | null} */ (document.getElementById('tracker-search'));
         if (s) s.placeholder = t('tracker.search.placeholder') || 'Search items...';
 
         const labelMap = {
@@ -635,7 +636,7 @@ window.EFTForge.tracker = (function () {
         const searchInput = document.getElementById('tracker-search');
         if (searchInput) {
             searchInput.addEventListener('input', function (e) {
-                _searchQuery = e.target.value || '';
+                _searchQuery = /** @type {HTMLInputElement} */ (e.target).value || '';
                 clearTimeout(_searchTimer);
                 _searchTimer = setTimeout(_rerender, 200);
             });
@@ -644,7 +645,7 @@ window.EFTForge.tracker = (function () {
         const filterWrap = document.getElementById('tracker-type-filter');
         if (filterWrap) {
             filterWrap.addEventListener('click', function (e) {
-                const btn = e.target.closest('.tracker-filter-btn');
+                const btn = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest('.tracker-filter-btn'));
                 if (!btn) return;
                 _typeFilter = btn.dataset.filter || 'all';
                 filterWrap.querySelectorAll('.tracker-filter-btn').forEach(function (b) {
@@ -656,7 +657,7 @@ window.EFTForge.tracker = (function () {
 
         const periodSel = document.getElementById('tracker-period-select');
         if (periodSel) {
-            periodSel.addEventListener('change', function (e) { _setPeriod(e.target.value); });
+            periodSel.addEventListener('change', function (e) { _setPeriod(/** @type {HTMLSelectElement} */ (e.target).value); });
             _refreshPeriodSelect();
         }
 

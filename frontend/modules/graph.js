@@ -1,3 +1,4 @@
+// @ts-check
 // ===================================================================
 //  GRAPH VIEW
 //  Contains all graph-related state and logic.
@@ -111,7 +112,7 @@ function _updateGraphHeader() {
     }
     const header = document.querySelector(".att-table-header");
     if (header) {
-        const icon = header.querySelector(".att-table-icon-preview, .bp-gun-img-wrap, .att-table-gun-img");
+        const icon = /** @type {HTMLElement | null} */ (header.querySelector(".att-table-icon-preview, .bp-gun-img-wrap, .att-table-gun-img"));
         if (icon) icon.style.visibility = (inGraph && isCustom) ? "hidden" : "";
     }
 }
@@ -145,7 +146,7 @@ function setGraphView(wantGraph) {
     if (EFTForge.state.graphMode === wantGraph) return;
     EFTForge.state.graphMode = wantGraph;
 
-    const table       = document.querySelector(".attachment-table");
+    const table       = /** @type {HTMLElement | null} */ (document.querySelector(".attachment-table"));
     const searchInput = document.getElementById("attachment-search");
 
     if (wantGraph) {
@@ -663,7 +664,7 @@ function _buildGraphSVG(container, { fromLerp = false } = {}) {
     if (!items.length && !isCustom) { container.innerHTML = ""; return; }
 
     const _rightPanel  = container.closest(".right-panel");
-    const _attHeader   = document.querySelector(".att-table-header");
+    const _attHeader   = /** @type {HTMLElement | null} */ (document.querySelector(".att-table-header"));
     const _headerH     = _attHeader ? _attHeader.offsetHeight : 60;
     const _availH      = _rightPanel ? _rightPanel.clientHeight : window.innerHeight;
     const _targetH_px  = Math.max(_availH - _headerH - 48, 240);
@@ -1128,7 +1129,8 @@ function _buildGraphSVG(container, { fromLerp = false } = {}) {
     document.addEventListener("mousedown", e => {
         if (!_graphSearchOpen) return;
         const panel = document.getElementById("graph-search-panel");
-        if (panel && !panel.contains(e.target) && propsBtn && !propsBtn.contains(e.target)) {
+        const target = /** @type {Node} */ (e.target);
+        if (panel && !panel.contains(target) && propsBtn && !propsBtn.contains(target)) {
             _closeGraphPanel();
             _buildGraphSVG(container);
         }
@@ -1366,11 +1368,11 @@ function _buildGraphSVG(container, { fromLerp = false } = {}) {
         if (!state.moved) {
             if (isCustom) {
                 // Click on custom dot removes it from selection
-                const dot = e.target.closest?.(".graph-custom-dot");
+                const dot = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest?.(".graph-custom-dot"));
                 if (dot) _removeCustomItem(dot.dataset.itemId);
             } else {
                 // Click on normal dot scrolls to the attachment row
-                const dot = e.target.closest?.(".att-graph-dot-click");
+                const dot = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest?.(".att-graph-dot-click"));
                 if (dot) {
                     const itemId = dot.dataset.itemId;
                     setGraphView(false);
@@ -1627,7 +1629,7 @@ async function _exportGraph(container) {
 
         await new Promise((resolve, reject) => {
             const tmpImg = new Image();
-            tmpImg.onload = () => { ctx.drawImage(tmpImg, 0, 0, W * SCALE, EH * SCALE); resolve(); };
+            tmpImg.onload = () => { ctx.drawImage(tmpImg, 0, 0, W * SCALE, EH * SCALE); resolve(undefined); };
             tmpImg.onerror = reject;
             tmpImg.src = svgDataUrl;
         });

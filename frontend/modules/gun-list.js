@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported _clearGunInitCache, gunById, _evictUnusedGunInitCache, _ensureGunInitCached, updateToggleUI,
@@ -391,7 +392,7 @@ function returnToGunSelection() {
         .forEach(el => el.classList.remove("active-slot"));
 
     const gunDisplayName = document.getElementById("gun-display-name");
-    const gunDisplayImage = document.getElementById("gun-display-image");
+    const gunDisplayImage = /** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"));
     if (gunDisplayName) gunDisplayName.textContent = "";
     if (gunDisplayImage) gunDisplayImage.style.display = "none";
 
@@ -404,7 +405,7 @@ function returnToGunSelection() {
 }
 
 function focusGunSearch(initialChar) {
-  const input = document.getElementById("gun-search");
+  const input = /** @type {HTMLInputElement | null} */ (document.getElementById("gun-search"));
   if (!input) return;
 
   input.focus();
@@ -413,7 +414,7 @@ function focusGunSearch(initialChar) {
 }
 
 function focusAttachmentSearch(initialChar) {
-  const input = document.getElementById("attachment-search");
+  const input = /** @type {HTMLInputElement | null} */ (document.getElementById("attachment-search"));
   if (!input) return;
 
   input.focus();
@@ -422,8 +423,8 @@ function focusAttachmentSearch(initialChar) {
 }
 
 function clearSearch() {
-  const gunInput = document.getElementById("gun-search");
-  const attachmentInput = document.getElementById("attachment-search");
+  const gunInput = /** @type {HTMLInputElement | null} */ (document.getElementById("gun-search"));
+  const attachmentInput = /** @type {HTMLInputElement | null} */ (document.getElementById("attachment-search"));
 
   if (gunInput) {
     gunInput.value = "";
@@ -657,7 +658,7 @@ async function selectGun(gun, liElement, { skipTreeRender = false, awaitBuildIma
 
   const imageSrc = gun.image_512_link || gun.icon_link;
 
-    const gunDisplayImage = document.getElementById("gun-display-image");
+    const gunDisplayImage = /** @type {HTMLImageElement | null} */ (document.getElementById("gun-display-image"));
     const gunDisplayName = document.getElementById("gun-display-name");
 
     if (gunDisplayImage && gunDisplayName) {
@@ -743,7 +744,7 @@ async function selectGun(gun, liElement, { skipTreeRender = false, awaitBuildIma
 
 async function loadAmmoForGun(gun, preloadedAmmo = null) {
 
-  const ammoSelect = document.getElementById("ammo-select");
+  const ammoSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"));
   if (!ammoSelect) return;
 
   // Switching between tabs on the same gun/caliber: options are already correct,
@@ -833,7 +834,7 @@ async function syncUbglAmmoSelector(preloadedUbglAmmo = null) {
 
   wrap.style.display = "";
 
-  const ubglSelect = document.getElementById("ubgl-ammo-select");
+  const ubglSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"));
   if (!ubglSelect) return;
 
   // Only reload if the caliber changed

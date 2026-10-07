@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* ============================================================
@@ -94,7 +95,7 @@ window.EFTForge.news = (function () {
         overlay.classList.add('visible');
         if (backdrop) backdrop.classList.add('visible');
         document.getElementById('main-container')?.setAttribute('inert', '');
-        if (document.activeElement) document.activeElement.blur();
+        if (document.activeElement) /** @type {HTMLElement} */ (document.activeElement).blur();
 
         _updateHeaderTitle(EFTForge.lang.t('news.title'));
         _setHash('news');
@@ -359,7 +360,7 @@ window.EFTForge.news = (function () {
         body.innerHTML = '<div class="news-page news-page--back"><div class="news-post-grid">' + cards + '</div></div>';
 
         // Freeze GIF thumbnails by drawing first frame to canvas
-        body.querySelectorAll('canvas.news-card-media[data-gif-src]').forEach(function (canvas) {
+        /** @type {NodeListOf<HTMLCanvasElement>} */ (body.querySelectorAll('canvas.news-card-media[data-gif-src]')).forEach(function (canvas) {
             const img = new Image();
             img.onload = function () {
                 canvas.width  = img.naturalWidth;
@@ -476,7 +477,7 @@ window.EFTForge.news = (function () {
             v.setAttribute('playsinline', '');
         });
 
-        body.querySelectorAll('.news-post-content img, .news-title-hero img').forEach(function (img) {
+        /** @type {NodeListOf<HTMLImageElement>} */ (body.querySelectorAll('.news-post-content img, .news-title-hero img')).forEach(function (img) {
             img.style.cursor = 'zoom-in';
             img.addEventListener('click', function () {
                 if (window.EFTForge && EFTForge.mediaViewer) EFTForge.mediaViewer.open(img.src);

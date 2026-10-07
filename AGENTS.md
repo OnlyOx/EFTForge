@@ -53,6 +53,7 @@ For feature-level documentation see [README.md](README.md) (English) / [README_Z
 - **`?v=HASH` cache-busting params** in `index.html`: these are content hashes, not hand-picked numbers - **never edit them yourself** (see Working Agreements below). `scripts/release_prep.py` regenerates them (and stamps `APP_BUILD_DATE` in `modules/config.js`) from the actual file bytes; the maintainer runs it right before a prod release.
 - **Tests:** `frontend/tests/` - minimal, currently `combo-api.test.js`, `combo-view.test.js`, `explore-api.test.js`, and `calculations.test.js` (the golden-vector check against `backend/stats.py`, see Stats above). No broad frontend test suite exists yet.
 - **Linting:** ESLint per `.eslintrc.json` (`npm run lint` from `frontend/`).
+- **Type checking:** `npm run typecheck` (TypeScript over `jsconfig.json`, no build step, runs in CI) checks every file whose first line is `// @ts-check`; the rest are not checked yet. Types come from JSDoc (`/** @type {HTMLInputElement | null} */ (document.getElementById(...))` and friends), so the shipped JS is unchanged. Names reached through `window.` or `EFTForge.`, and custom properties stored on DOM elements, are declared in `frontend/types/globals.d.ts`; add new ones there.
 
 ## Desktop app (`desktop/`)
 

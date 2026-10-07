@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 // Client-side copies of backend/stats.py's aiming formulas, for instant feedback when the

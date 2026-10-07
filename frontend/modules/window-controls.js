@@ -1,3 +1,4 @@
+// @ts-check
 /* ============================================================
    DESKTOP APP WINDOW CONTROLS
    Only active inside the packaged desktop app (see desktop-settings.js for
@@ -145,7 +146,7 @@
             </div>
         `;
 
-        const remember = () => document.getElementById("close-choice-remember").checked;
+        const remember = () => /** @type {HTMLInputElement} */ (document.getElementById("close-choice-remember")).checked;
 
         // "remember" must finish writing to settings.json *before* telling
         // Rust to act - exit_app tears down this same local backend process,

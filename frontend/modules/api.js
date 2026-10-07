@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported fetchGraphSearchableItems -- called from other modules */
@@ -116,7 +117,7 @@ async function fetchGunInit(gunId, { selectedAmmoId = null, selectedUbglAmmoId =
     if (EFTForge.state.currentEquipErgoModifier) params.set("equip_ergo_modifier", EFTForge.state.currentEquipErgoModifier);
     if (selectedAmmoId) params.set("selected_ammo_id", selectedAmmoId);
     if (selectedUbglAmmoId) params.set("selected_ubgl_ammo_id", selectedUbglAmmoId);
-    params.set("assume_full_mag", assumeFullMag);
+    params.set("assume_full_mag", String(assumeFullMag));
     const res = await catalogFetch(`/guns/${gunId}/init?${params}`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     return res.json();
@@ -267,7 +268,7 @@ async function exploreStream(payload, signal, onProgress, onStart) {
     });
     if (!res.ok) {
         const data = await res.json().catch(() => null);
-        const error = new Error(`Server error: ${res.status}`);
+        const error = /** @type {Error & { status?: number, reasonKey?: string }} */ (new Error(`Server error: ${res.status}`));
         error.status = res.status;
         error.reasonKey = data?.detail?.reason_key;
         throw error;
@@ -609,7 +610,7 @@ async function uploadAvatar(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const b64 = e.target.result.split(",")[1];
+            const b64 = /** @type {string} */ (e.target.result).split(",")[1];
             try {
                 const res = await fetch(`${_base()}/profile/avatar`, {
                     method:  "POST",

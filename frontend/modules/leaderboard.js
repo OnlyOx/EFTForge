@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* ============================================================
@@ -42,7 +43,7 @@ window.EFTForge.leaderboard = (function () {
         overlay.classList.add('visible');
         if (backdrop) backdrop.classList.add('visible');
         document.getElementById('main-container')?.setAttribute('inert', '');
-        if (document.activeElement) document.activeElement.blur();
+        if (document.activeElement) /** @type {HTMLElement} */ (document.activeElement).blur();
 
         _renderControls();
         _loadData();
@@ -292,7 +293,7 @@ window.EFTForge.leaderboard = (function () {
 
         // attach click handlers for build entries
         if (_mode === 'builds') {
-            body.querySelectorAll('.lb-entry-build').forEach(function (el) {
+            /** @type {NodeListOf<HTMLElement>} */ (body.querySelectorAll('.lb-entry-build')).forEach(function (el) {
                 el.addEventListener('click', function () {
                     const idx = parseInt(el.dataset.idx, 10);
                     const entry = (_cache[_cacheKey()] || [])[idx];
@@ -378,7 +379,7 @@ window.EFTForge.leaderboard = (function () {
     }
 
     function _updateGunInputLabel() {
-        const input = document.getElementById('lb-gun-input');
+        const input = /** @type {HTMLInputElement | null} */ (document.getElementById('lb-gun-input'));
         if (!input) return;
         const t = EFTForge.lang.t;
         if (_gunFilter === 'all') {
@@ -404,7 +405,7 @@ window.EFTForge.leaderboard = (function () {
     =========================== */
 
     function _initGunSelect() {
-        const input    = document.getElementById('lb-gun-input');
+        const input    = /** @type {HTMLInputElement | null} */ (document.getElementById('lb-gun-input'));
         const dropdown = document.getElementById('lb-gun-dropdown');
         if (!input || !dropdown) return;
 
@@ -467,7 +468,7 @@ window.EFTForge.leaderboard = (function () {
     }
 
     function _refreshCustomSelect(id, options, currentValue) {
-        const sel = document.getElementById(id);
+        const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById(id));
         if (!sel) return;
         // update option labels (triggers MutationObserver in setupCustomSelect)
         const existing = document.getElementById(id + '-custom');
@@ -518,13 +519,13 @@ window.EFTForge.leaderboard = (function () {
 
         // wire up period and sort dropdowns
         const periodSel = document.getElementById('lb-period-select');
-        if (periodSel) periodSel.addEventListener('change', function (e) { _setPeriod(e.target.value); });
+        if (periodSel) periodSel.addEventListener('change', function (e) { _setPeriod(/** @type {HTMLSelectElement} */ (e.target).value); });
 
         const sortSel = document.getElementById('lb-sort-select');
-        if (sortSel) sortSel.addEventListener('change', function (e) { _setSort(e.target.value); });
+        if (sortSel) sortSel.addEventListener('change', function (e) { _setSort(/** @type {HTMLSelectElement} */ (e.target).value); });
 
         const catSel = document.getElementById('lb-category-select');
-        if (catSel) catSel.addEventListener('change', function (e) { _setCategory(e.target.value); });
+        if (catSel) catSel.addEventListener('change', function (e) { _setCategory(/** @type {HTMLSelectElement} */ (e.target).value); });
 
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;

@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 // ============================================================
@@ -442,8 +443,8 @@ window.EFTForge = window.EFTForge || {};
         if (!(EFTForge.state.assumeFullMag ?? true)) return null;
         const ubglRow = document.getElementById("ubgl-ammo-row");
         const ubgl = ubglRow && ubglRow.style.display !== "none"
-            ? document.getElementById("ubgl-ammo-select")?.value : null;
-        return { ammo: document.getElementById("ammo-select")?.value || null, ubgl: ubgl || null };
+            ? /** @type {HTMLSelectElement | null} */ (document.getElementById("ubgl-ammo-select"))?.value : null;
+        return { ammo: /** @type {HTMLSelectElement | null} */ (document.getElementById("ammo-select"))?.value || null, ubgl: ubgl || null };
     }
 
     // Our Strength level and equipment ergo modifier drive the viewer's ADS model too, so its
@@ -764,7 +765,7 @@ window.EFTForge = window.EFTForge || {};
     // No browser context menu anywhere in the 3D viewer, as inside the frame itself. Only the
     // default goes: our own right-click actions (removing a part from the table) still run.
     document.addEventListener("contextmenu", (e) => {
-        if (isActive() && e.target.closest?.("#main-container, .hidden-stats-popover, .b3d-frame-select")) e.preventDefault();
+        if (isActive() && /** @type {Element} */ (e.target).closest?.("#main-container, .hidden-stats-popover, .b3d-frame-select")) e.preventDefault();
     });
 
     // --------------------------------------------------------- keys
@@ -1408,7 +1409,7 @@ window.EFTForge = window.EFTForge || {};
         _buildChrome();
         // As wide as the same controls are in the 2D left panel (its width less 20px of
         // padding and 20px of right margin), so switching modes leaves them in place.
-        const width2d = parseFloat(document.querySelector(".left-panel")?.style.width) || 660;
+        const width2d = parseFloat(/** @type {HTMLElement | null} */ (document.querySelector(".left-panel"))?.style.width) || 660;
         _topLeft.style.width = Math.max(300, width2d - 40) + "px";
         document.body.classList.add("builder-3d");
         // A table left open in 2D belongs to a slot the 3D view has no open box for: close it,

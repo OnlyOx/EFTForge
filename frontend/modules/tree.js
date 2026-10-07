@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported updateSlotIcon, flashTree, flashConflictInTree, flashConflictSlotInTree, installAttachment,
@@ -169,7 +170,7 @@ async function renderNode(node, depth, parentElement) {
             </div>
         `;
 
-        const nameEl = wrapper.querySelector(".tree-slot-name");
+        const nameEl = /** @type {HTMLElement | null} */ (wrapper.querySelector(".tree-slot-name"));
 
         // NAME CLICK → collapse only if slot has children
         nameEl.onclick = (e) => {
@@ -184,7 +185,7 @@ async function renderNode(node, depth, parentElement) {
                 if (isCollapsing) {
 
                     // Animate collapse on existing DOM before rebuild
-                    const childContainer = wrapper.nextElementSibling;
+                    const childContainer = /** @type {HTMLElement | null} */ (wrapper.nextElementSibling);
                     if (childContainer) {
                         childContainer.style.height = childContainer.scrollHeight + "px";
                         childContainer.style.opacity = "1";
@@ -207,7 +208,7 @@ async function renderNode(node, depth, parentElement) {
 
                         if (!newWrapper) return;
 
-                        const newContainer = newWrapper.nextElementSibling;
+                        const newContainer = /** @type {HTMLElement | null} */ (newWrapper.nextElementSibling);
                         if (!newContainer || !newContainer.classList.contains("tree-children")) return;
 
                         // Start from 0 and animate to full height

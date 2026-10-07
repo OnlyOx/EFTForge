@@ -1,3 +1,4 @@
+// @ts-check
 /* Prepare temporary capture compositions without changing build state. */
 (function () {
     if (!['localhost', '127.0.0.1'].includes(location.hostname) && !window.__EFTFORGE_DESKTOP__) return;
@@ -96,7 +97,7 @@
         textPicker.replaceChildren();
         textNodes.forEach((node, i) => {
             const option = document.createElement('option');
-            option.value = i;
+            option.value = String(i);
             option.textContent = node.nodeValue.trim().slice(0, 100);
             textPicker.append(option);
         });
@@ -235,7 +236,7 @@
     }, true);
     for (const type of ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu']) {
         window.addEventListener(type, e => {
-            if (mode !== 'editing' || e.target.closest?.(excluded)) return;
+            if (mode !== 'editing' || /** @type {Element} */ (e.target).closest?.(excluded)) return;
             e.preventDefault();
             e.stopImmediatePropagation();
             if (type === 'click') {

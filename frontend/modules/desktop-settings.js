@@ -1,3 +1,4 @@
+// @ts-check
 /* ============================================================
    DESKTOP APP SETTINGS
    Only active inside the packaged desktop app (the local backend

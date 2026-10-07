@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * attachment-grid-devtool.js
  *
@@ -103,14 +104,14 @@
     // ============================================================
 
     function applyDevMode() {
-        const grid = document.querySelector('.attachment-grid');
+        const grid = /** @type {HTMLElement | null} */ (document.querySelector('.attachment-grid'));
         if (!grid) return;
 
         const rowMatch = grid.style.gridTemplateRows.match(/repeat\((\d+)/);
         if (!rowMatch) return;
         const totalRows = parseInt(rowMatch[1]);
 
-        const gunCell = grid.querySelector('.ag-gun-cell');
+        const gunCell = /** @type {HTMLElement | null} */ (grid.querySelector('.ag-gun-cell'));
         const gunRow  = gunCell ? parseInt(gunCell.style.gridRow) : 1;
 
         // Mark the grid so CSS can target dev-mode state
@@ -118,7 +119,7 @@
 
         // Build a set of already-occupied (col, row) positions
         const occupied = new Set();
-        grid.querySelectorAll('.ag-cell').forEach(cell => {
+        /** @type {NodeListOf<HTMLElement>} */ (grid.querySelectorAll('.ag-cell')).forEach(cell => {
             occupied.add(`${cell.style.gridColumn},${cell.style.gridRow}`);
         });
         // Gun cell occupies cols 7-9
@@ -212,7 +213,7 @@
         for (let col = 1; col <= 10; col++) {
             const cell = document.createElement('div');
             cell.className = 'ag-dev-expand-cell';
-            cell.textContent = col;
+            cell.textContent = String(col);
             cell.addEventListener('dragover', e => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';

@@ -320,6 +320,11 @@ window.updateAttTableHeaderImg = updateAttTableHeaderImg;
 // items, then one batch request for validity and simulated stats. The attachment table
 // and the 3D view's native part menu both list what this returns. Null on a network
 // error (after a toast) or when stale() says a newer request took over.
+/**
+ * @param {any} parentNode
+ * @param {any} slot
+ * @param {{ stale?: () => boolean, ratings?: boolean }} [options]
+ */
 async function _loadSlotCandidates(parentNode, slot, { stale = () => false, ratings = false } = {}) {
   const { t } = EFTForge.lang;
   let items;

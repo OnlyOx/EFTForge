@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* ============================================================
@@ -110,7 +111,7 @@ window.EFTForge = window.EFTForge || {};
 
     function _renderWebsite(el) {
         const rows = [[t("perf.fps"), String(_lastFps)]];
-        const mem = performance.memory;
+        const mem = /** @type {any} */ (performance).memory; // Chromium only
         if (mem) {
             rows.push([t("perf.jsHeapUsed"), _fmtMb(mem.usedJSHeapSize / 1048576)]);
             rows.push([t("perf.jsHeapLimit"), _fmtMb(mem.jsHeapSizeLimit / 1048576)]);

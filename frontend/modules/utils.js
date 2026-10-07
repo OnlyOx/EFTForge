@@ -1,3 +1,4 @@
+// @ts-check
 window.EFTForge = window.EFTForge || {};
 
 /* exported proxyAvatarUrl, isMobileLayout, _formatPrice, setToastStatus, setupCustomScrollbar -- called from other modules */
@@ -149,7 +150,7 @@ function _hexToRgba(hex, alpha) {
 }
 
 function _updateBlobColor() {
-    const toasts = document.querySelectorAll(".toast.show");
+    const toasts = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(".toast.show"));
     if (toasts.length > 0) {
         const blobColor = toasts[toasts.length - 1].dataset.blobColor;
         if (blobColor) document.documentElement.style.setProperty("--blob-color", blobColor);
@@ -379,7 +380,7 @@ function showToast(title, message, duration = 3000, color = "#e74c3c", actions =
         hint.textContent = "×";
         toast.appendChild(hint);
         toast.addEventListener("click", (e) => {
-            if (!e.target.closest(".toast-action-btn")) state.dismiss();
+            if (!/** @type {Element} */ (e.target).closest(".toast-action-btn")) state.dismiss();
         });
     }
 
@@ -476,7 +477,7 @@ function _createModalOverlay(id, title, opts = {}) {
     }
 
     if (tabs && tabs.length > 0) {
-        overlay.querySelectorAll(".modal-tab").forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(".modal-tab")).forEach(btn => {
             btn.addEventListener("click", () => {
                 const targetId = btn.dataset.target;
                 overlay.querySelectorAll(".modal-tab").forEach(b => b.classList.remove("active"));
@@ -598,7 +599,7 @@ function setupCustomScrollbar(el, { axis = "y", inset = 2, minThumb = 24 } = {})
     el.classList.add("cs-host");
     // Sit one layer above hosts that stack themselves (dropdown lists, popovers)
     const hostZ = parseInt(getComputedStyle(el).zIndex, 10);
-    if (!isNaN(hostZ)) bars.forEach(b => { b.rail.style.zIndex = hostZ + 1; });
+    if (!isNaN(hostZ)) bars.forEach(b => { b.rail.style.zIndex = String(hostZ + 1); });
 
     let rafId = null;
     // Auto-attach happens on pointerover, after the host's own pointerenter has passed
@@ -854,7 +855,7 @@ function _csAutoAttach(el) {
 (function initAutoScrollbars() {
     if (window.matchMedia?.("(pointer: coarse)").matches) return;
     document.addEventListener("pointerover", (e) => {
-        for (let n = e.target; n && n !== document.body; n = n.parentElement) _csAutoAttach(n);
+        for (let n = /** @type {Element} */ (e.target); n && n !== document.body; n = n.parentElement) _csAutoAttach(n);
     }, { passive: true });
     document.addEventListener("scroll", (e) => _csAutoAttach(e.target), { capture: true, passive: true });
 })();
@@ -909,7 +910,7 @@ function _initMarqueeText(container, { hoverOnly = false, hoverTarget = "tr" } =
                 // paddingLeft - without correcting for that, padded containers (e.g.
                 // .custom-select-option) stop the scroll short of the text's true end.
                 const parentStyle = getComputedStyle(parent);
-                const horizontalPadding = parseFloat(parentStyle.paddingLeft || 0) + parseFloat(parentStyle.paddingRight || 0);
+                const horizontalPadding = parseFloat(parentStyle.paddingLeft || "0") + parseFloat(parentStyle.paddingRight || "0");
                 const overflow = el.offsetWidth - (parent.clientWidth - horizontalPadding);
 
                 if (overflow <= 2) {
