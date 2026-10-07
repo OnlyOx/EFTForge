@@ -29,7 +29,9 @@ window.EFTForge = window.EFTForge || {};
     const _read = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } };
     const _write = (key, value) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } };
 
-    let _mode = _read(MODE_KEY, "3d") === "2d" ? "2d" : "3d";
+    // 3D is opt in: every model it shows comes off the CDN, so open in 2D until the user
+    // picks 3D with the toggle (setMode remembers it).
+    let _mode = _read(MODE_KEY, "2d") === "3d" ? "3d" : "2d";
     let _pickerStyle = _read(PICKER_KEY, "table") === "game" ? "game" : "table";
     let _failedThisSession = false;
 

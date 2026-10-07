@@ -24,7 +24,7 @@ EFTForge is a full-stack Escape from Tarkov weapon build simulator and community
 ## Features
 
 ### 3D Builder
-- Build your weapon in 3D, now the default view; switch back to 2D anytime (mobile stays 2D)
+- Build your weapon in 3D: switch to it with the 2D/3D toggle and it stays your view (mobile stays 2D)
 - Click a slot on the model to pick a part, right click to remove it
 - **Compact Picker** - pick parts from an in-game style dropdown
 - Stats and price panel you can drag anywhere
